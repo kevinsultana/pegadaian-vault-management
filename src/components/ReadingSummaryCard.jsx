@@ -4,15 +4,21 @@ import React from 'react';
 import { useVaultStore } from '../store/useVaultStore';
 
 export default function ReadingSummaryCard() {
-  const { items, scenarioId, readDuration } = useVaultStore();
+  const { items, readDuration } = useVaultStore();
 
-  // Compute stats
-  const totalPhysicalItems = 39;
-  const missingCount = scenarioId === 'UT-04' ? 1 : 0;
+  const totalPhysicalItems = items.filter((it) => it.status !== 'RECONCILED_VIRT').length;
+  const missingItems = items.filter((it) => it.status === 'MISSING');
+  const missingCount = missingItems.length;
   const readTagsCount = totalPhysicalItems - missingCount;
 
-  // Occupied drawers (L01-L12, minus L06 & L12)
-  const occupiedDrawers = 10;
+  // Occupied drawers calculation
+  const drawerOccupancy = new Set();
+  items.forEach((it) => {
+    if (it.status !== 'RECONCILED_VIRT' && it.status !== 'MISSING') {
+      drawerOccupancy.add(it.drawerId);
+    }
+  });
+  const occupiedDrawers = drawerOccupancy.size;
   const totalDrawers = 12;
 
   return (

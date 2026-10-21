@@ -1,17 +1,21 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import Header from '../components/Header';
-import Sidebar from '../components/Sidebar';
-import DemoController from '../components/DemoController';
-import PocVerificationDrawer from '../components/PocVerificationDrawer';
-import DashboardView from '../components/views/DashboardView';
-import DrawerMonitorView from '../components/views/DrawerMonitorView';
-import TransferView from '../components/views/TransferView';
-import AlertView from '../components/views/AlertView';
-import ClassificationModal from '../components/modals/ClassificationModal';
-import BeritaAcaraModal from '../components/modals/BeritaAcaraModal';
-import { useVaultStore } from '../store/useVaultStore';
+import React, { useEffect, useState } from "react";
+import Header from "../components/Header";
+import Sidebar from "../components/Sidebar";
+import DashboardView from "../components/views/DashboardView";
+import DrawerMonitorView from "../components/views/DrawerMonitorView";
+import TransferView from "../components/views/TransferView";
+import AlertView from "../components/views/AlertView";
+import ApprovalView from "../components/views/ApprovalView";
+import AuditTrailView from "../components/views/AuditTrailView";
+import ReportsView from "../components/views/ReportsView";
+import ClassificationModal from "../components/modals/ClassificationModal";
+import BeritaAcaraModal from "../components/modals/BeritaAcaraModal";
+import TransferModal from "../components/modals/TransferModal";
+import PhysicalVaultSimulator from "../components/PhysicalVaultSimulator";
+import ToastContainer from "../components/ToastContainer";
+import { useVaultStore } from "../store/useVaultStore";
 
 export default function Home() {
   const { activeView } = useVaultStore();
@@ -31,7 +35,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-800 flex flex-col antialiased selection:bg-[#00b4d8] selection:text-[#0f233a]">
-      {/* Top Header */}
+      {/* Top Header with Role Switcher */}
       <Header />
 
       {/* Body Layout: Sidebar + Main Content */}
@@ -41,36 +45,33 @@ export default function Home() {
 
         {/* Dynamic Center Stage */}
         <main className="flex-1 overflow-y-auto p-5 pb-24 md:p-6 md:pb-28">
-          <div className="max-w-[1440px] mx-auto">
-            {activeView === 'dashboard' && <DashboardView />}
-            {activeView === 'lemari-laci' && <DrawerMonitorView />}
-            {activeView === 'transfer' && <TransferView />}
-            {activeView === 'alert' && <AlertView />}
-
-            {/* Fallback for other sidebar items to provide realistic response */}
-            {!['dashboard', 'lemari-laci', 'transfer', 'alert'].includes(activeView) && (
-              <div className="bg-white rounded-lg border border-slate-200 p-8 text-center space-y-3">
-                <h3 className="font-bold text-base text-slate-800 uppercase tracking-wide">
-                  Menu: {activeView.replace('-', ' ')}
-                </h3>
-                <p className="text-xs text-slate-500 max-w-md mx-auto">
-                  Modul ini merupakan bagian dari ekosistem UNOTEK Vault Enterprise. Silakan gunakan menu <span className="font-semibold text-slate-700">Dashboard</span>, <span className="font-semibold text-slate-700">Lemari & Laci</span>, atau tombol skenario di bawah untuk demonstrasi PoC.
-                </p>
-              </div>
+          <div className="max-w-360 mx-auto">
+            {activeView === "dashboard" && <DashboardView />}
+            {(activeView === "lemari-laci" || activeView === "inventory") && (
+              <DrawerMonitorView />
+            )}
+            {activeView === "transfer" && <TransferView />}
+            {activeView === "approval" && <ApprovalView />}
+            {activeView === "alert" && <AlertView />}
+            {activeView === "audit-trail" && <AuditTrailView />}
+            {(activeView === "laporan" || activeView === "stock-opname") && (
+              <ReportsView />
             )}
           </div>
         </main>
       </div>
 
-      {/* Floating Demo Skenario Controller Toolbar */}
-      <DemoController />
+      {/* Hardware / Physical Vault Simulator Sandbox Popover */}
+      <PhysicalVaultSimulator />
 
-      {/* Acceptance Criteria Status Drawer */}
-      <PocVerificationDrawer />
-
-      {/* Interactive Modals */}
+      {/* Interactive Operational Modals */}
+      <TransferModal />
       <ClassificationModal />
       <BeritaAcaraModal />
+
+      {/* Real-time Floating Toast Notifications */}
+      <ToastContainer />
     </div>
   );
 }
+
