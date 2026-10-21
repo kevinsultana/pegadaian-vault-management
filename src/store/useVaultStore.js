@@ -704,6 +704,31 @@ export const useVaultStore = create(
         get().addToast(`Berita Acara ${id} berhasil diterbitkan & saldo direkonsiliasi`, 'success');
       },
 
+      // Otorisasi & Penutupan Temuan Audit oleh SPI
+      closeBeritaAcara: (baId) => {
+        const timestamp = new Date().toLocaleString('id-ID');
+        const updatedList = get().beritaAcaraList.map((ba) => {
+          if (ba.id === baId) {
+            return {
+              ...ba,
+              status: 'DITUTUP & DISETUJUI SPI',
+              closedAt: timestamp,
+              closedBy: 'auditor.spi01',
+            };
+          }
+          return ba;
+        });
+
+        get().addAuditTrail(
+          'PENUTUPAN_TEMUAN_SPI',
+          `Dokumen Berita Acara ${baId} resmi diotorisasi & ditutup oleh auditor.spi01`,
+          'BERHASIL'
+        );
+
+        set({ beritaAcaraList: updatedList });
+        get().addToast(`Temuan ${baId} resmi diotorisasi & ditutup oleh SPI`, 'success');
+      },
+
       toggleAutoScan: () => set((s) => ({ autoScan: !s.autoScan })),
 
       // Reset Demo Data ke Initial Seeds

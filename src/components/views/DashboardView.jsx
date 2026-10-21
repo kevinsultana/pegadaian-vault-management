@@ -13,32 +13,57 @@ import {
 
 export default function DashboardView() {
   const {
-    kpi,
     alerts,
     rfidLogs,
     items,
+    transfers,
+    beritaAcaraList,
     setActiveView,
     setSelectedDrawer,
     lastScanTime,
   } = useVaultStore();
 
+  // Dynamic KPI Calculations based on real store state
+  const otherCabinetsCount = 1209;
+  const totalVaultItems = otherCabinetsCount + items.length;
+  const lt01PhysicallyPresentCount = items.filter((i) => i.isPhysicallyPresent).length;
+  const readLastCycle = otherCabinetsCount + lt01PhysicallyPresentCount;
+
+  // Selisih Terbuka = hitung otomatis jumlah item LT-01 yang isPhysicallyPresent === false dan belum selesai diberita-acarakan
+  const openDifference = items.filter(
+    (i) => !i.isPhysicallyPresent && i.status !== 'RECONCILED_VIRT'
+  ).length;
+
+  // IRA (Inventory Record Accuracy) = ((Terbaca / Total Item) * 100).toFixed(2) + '%'
+  const accuracy = ((readLastCycle / totalVaultItems) * 100).toFixed(2) + '%';
+
+  // Mutasi Hari Ini = hitung jumlah dokumen transfer approved/verified + Berita Acara hari ini
+  const approvedTransfersCount = transfers.filter(
+    (t) => t.status === 'APPROVED' || t.status === 'VERIFIED'
+  ).length;
+  const todayMutations = approvedTransfersCount + beritaAcaraList.length;
+
   // Dynamic check for LT-01 drawers with selisih
   const l05HasSelisih = items.some(
-    (it) => it.drawerId === "L05" && it.status === "MISSING",
+    (it) =>
+      (it.systemDrawerId === 'L05' || it.drawerId === 'L05') &&
+      !it.isPhysicallyPresent &&
+      it.status !== 'RECONCILED_VIRT'
   );
+
   const activeAlerts = alerts.filter(
-    (a) => a.status === "OPEN" || a.status === "PENDING",
+    (a) => a.status === 'OPEN' || a.status === 'PENDING'
   );
 
   // 7 Days Mutation Mock Data
   const mutationHistory = [
-    { day: "14/10", inCount: 18, outCount: 15 },
-    { day: "15/10", inCount: 28, outCount: 24 },
-    { day: "16/10", inCount: 22, outCount: 25 },
-    { day: "17/10", inCount: 26, outCount: 19 },
-    { day: "18/10", inCount: 12, outCount: 10 },
-    { day: "19/10", inCount: 9, outCount: 8 },
-    { day: "20/10", inCount: 18, outCount: 16 },
+    { day: '14/10', inCount: 18, outCount: 15 },
+    { day: '15/10', inCount: 28, outCount: 24 },
+    { day: '16/10', inCount: 22, outCount: 25 },
+    { day: '17/10', inCount: 26, outCount: 19 },
+    { day: '18/10', inCount: 12, outCount: 10 },
+    { day: '19/10', inCount: 9, outCount: 8 },
+    { day: '20/10', inCount: 18, outCount: 16 },
   ];
 
   return (
@@ -62,9 +87,9 @@ export default function DashboardView() {
           </span>
           <div className="mt-2">
             <span className="text-2xl font-bold font-mono text-slate-900 leading-none">
-              {kpi.totalVaultItems.toLocaleString("id-ID")}
+              {totalVaultItems.toLocaleString('id-ID')}
             </span>
-            <p className="text-[10px] text-slate-400 mt-1">keping emas</p>
+            <p className="text-[10px] text-slate-400 mt-1">keping emas (1.209 + {items.length} LT-01)</p>
           </div>
         </div>
 
@@ -75,9 +100,9 @@ export default function DashboardView() {
           </span>
           <div className="mt-2">
             <span className="text-2xl font-bold font-mono text-emerald-600 leading-none">
-              {kpi.readLastCycle.toLocaleString("id-ID")}
+              {readLastCycle.toLocaleString('id-ID')}
             </span>
-            <p className="text-[10px] text-slate-400 mt-1">dari 1.248 tag</p>
+            <p className="text-[10px] text-slate-400 mt-1">dari {totalVaultItems.toLocaleString('id-ID')} tag</p>
           </div>
         </div>
 
@@ -87,13 +112,13 @@ export default function DashboardView() {
             Selisih terbuka
           </span>
           <div className="mt-2">
-            <span className="text-2xl font-bold font-mono text-rose-600 leading-none">
-              {kpi.openDifference}
+            <span className={`text-2xl font-bold font-mono leading-none ${openDifference > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+              {openDifference}
             </span>
             <p className="text-[10px] text-slate-400 mt-1">
-              {kpi.openDifference > 0
-                ? "menunggu klasifikasi"
-                : "0 selisih (normal)"}
+              {openDifference > 0
+                ? `${openDifference} item belum direkonsiliasi`
+                : '0 selisih (normal)'}
             </p>
           </div>
         </div>
@@ -105,7 +130,7 @@ export default function DashboardView() {
           </span>
           <div className="mt-2">
             <span className="text-2xl font-bold font-mono text-[#008ba3] leading-none">
-              {kpi.accuracy}
+              {accuracy}
             </span>
             <p className="text-[10px] text-slate-400 mt-1">target 100%</p>
           </div>
@@ -118,11 +143,9 @@ export default function DashboardView() {
           </span>
           <div className="mt-2">
             <span className="text-2xl font-bold font-mono text-slate-900 leading-none">
-              {kpi.todayMutations}
+              {todayMutations}
             </span>
-            <p className="text-[10px] text-slate-400 mt-1">
-              in 18 · out 16 · transfer 8
-            </p>
+            <p className="text-[10px] text-slate-400 mt-1">{approvedTransfersCount} transfer · {beritaAcaraList.length} BA</p>
           </div>
         </div>
       </div>
