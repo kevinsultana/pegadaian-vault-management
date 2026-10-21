@@ -17,8 +17,7 @@ import {
 
 const DRAWER_FILTER_OPTIONS = [
   'SEMUA',
-  'L01', 'L02', 'L03', 'L04', 'L05', 'L06',
-  'L07', 'L08', 'L09', 'L10', 'L11', 'L12',
+  'L01', 'L02', 'L03',
 ];
 
 export default function InventoryPage() {
@@ -29,9 +28,8 @@ export default function InventoryPage() {
   const [selectedDrawerFilter, setSelectedDrawerFilter] = useState('SEMUA');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('ALL');
 
-  const totalOtherCabinets = 1209;
-  const totalTags = totalOtherCabinets + items.length;
-  const onlineTagsCount = totalOtherCabinets + items.filter((i) => i.isPhysicallyPresent).length;
+  const totalTags = items.length;
+  const onlineTagsCount = items.filter((i) => i.isPhysicallyPresent).length;
   const offlineTagsCount = items.filter((i) => !i.isPhysicallyPresent && i.status !== 'RECONCILED_VIRT').length;
   const misplacedTagsCount = items.filter(
     (i) => i.isPhysicallyPresent && i.physicalDrawerId !== (i.systemDrawerId || item.drawerId)
@@ -109,9 +107,9 @@ export default function InventoryPage() {
             <Radio className="w-4 h-4 text-emerald-600" />
           </div>
           <p className="text-xl font-bold font-mono text-emerald-700 mt-1">
-            {items.filter((i) => i.isPhysicallyPresent).length}
+            {onlineTagsCount}
           </p>
-          <p className="text-[10px] text-slate-400 mt-0.5">+ 1.209 keping lemari lain</p>
+          <p className="text-[10px] text-slate-400 mt-0.5">dari {totalTags} keping di LT-01</p>
         </div>
 
         <div className="bg-white p-3.5 rounded-lg border border-slate-200 shadow-xs">

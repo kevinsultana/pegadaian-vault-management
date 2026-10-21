@@ -7,13 +7,8 @@ import { ArrowRight } from 'lucide-react';
 export default function DrawerMatrix() {
   const { items, transfers, selectedDrawer, setSelectedDrawer } = useVaultStore();
 
-  // Define 12 Drawers (L01 to L12)
-  const drawerList = [
-    'L01', 'L02', 'L03',
-    'L04', 'L05', 'L06',
-    'L07', 'L08', 'L09',
-    'L10', 'L11', 'L12',
-  ];
+  // Define 3 Drawers (L01, L02, L03) for PoC
+  const drawerList = ['L01', 'L02', 'L03'];
 
   // Check recent transfers for indicator badge & arrow
   const recentVerifiedTransfer = transfers.find((t) => t.status === 'VERIFIED');
@@ -83,8 +78,8 @@ export default function DrawerMatrix() {
 
   return (
     <div className="relative">
-      {/* Grid 3x4 Drawers */}
-      <div className="grid grid-cols-3 gap-3">
+      {/* Grid 3 Drawers */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {drawerList.map((dId) => {
           const { count, statusLabel, badgeType, isSelisih, isTransfer } = getDrawerStats(dId);
           const isSelected = selectedDrawer === dId;
@@ -143,7 +138,7 @@ export default function DrawerMatrix() {
 
       {/* Transfer Arrow Indicator Overlay between L01 and L02 when recent verified transfer exists */}
       {sourceTrfDrawer === 'L01' && targetTrfDrawer === 'L02' && (
-        <div className="absolute top-7 left-[32%] z-10 pointer-events-none transform -translate-x-1/2">
+        <div className="hidden md:flex absolute top-1/2 left-[33%] z-10 pointer-events-none transform -translate-x-1/2 -translate-y-1/2">
           <div className="bg-[#0284c7] text-white p-1.5 rounded-full shadow-md border-2 border-white flex items-center justify-center animate-pulse">
             <ArrowRight className="w-4 h-4" />
           </div>

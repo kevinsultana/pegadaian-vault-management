@@ -335,17 +335,20 @@ export const useVaultStore = create(
           id: `scan-done-${Date.now()}`,
           time: timeStr,
           title: 'Siklus baca selesai',
-          detail: `LT-01 · 12 laci · ${totalRead} tag terbaca · ${totalSelisih} selisih`,
+          detail: `LT-01 · 3 laci · ${totalRead} tag terbaca · ${totalSelisih} selisih`,
           type: totalSelisih > 0 ? 'cycle-selisih' : 'cycle-done',
           color: totalSelisih > 0 ? 'orange' : 'green',
         });
 
         // Update KPI
+        const totalItemsCount = currentItems.length;
+        const accuracyNum = totalItemsCount > 0 ? ((totalRead / totalItemsCount) * 100).toFixed(1) : '100.0';
         const newKpi = {
           ...get().kpi,
-          readLastCycle: 1248 - (currentItems.length - totalRead),
+          totalVaultItems: totalItemsCount,
+          readLastCycle: totalRead,
           openDifference: totalSelisih,
-          accuracy: totalSelisih === 0 ? '100%' : '99,92%',
+          accuracy: `${accuracyNum}%`,
         };
 
         set({
@@ -631,8 +634,8 @@ export const useVaultStore = create(
         const targetItem = get().selectedAlertItem || get().items.find((i) => i.status === 'MISSING') || {
           id: 'E0040024',
           brand: 'Galeri24 5 g',
-          systemDrawerId: 'L05',
-          drawerId: 'L05',
+          systemDrawerId: 'L03',
+          drawerId: 'L03',
         };
 
         const id = `BA-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}`;
@@ -763,7 +766,7 @@ export const useVaultStore = create(
               timestamp: '20/10/2026 09:45:01',
               action: 'SIKLUS_BACA_RFID',
               actor: 'system:reader-mars4at',
-              details: 'Pindai otomatis lemari LT-01: 39 tag terbaca normal (0 selisih)',
+              details: 'Pindai otomatis lemari LT-01: 10 tag terbaca normal (0 selisih)',
               status: 'BERHASIL',
             },
           ],
@@ -771,7 +774,7 @@ export const useVaultStore = create(
       },
     }),
     {
-      name: 'unotek_vault_poc_v1',
+      name: 'pegadaian_vault_v2_simple',
     }
   )
 );

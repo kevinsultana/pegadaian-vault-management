@@ -110,7 +110,7 @@ export default function PhysicalVaultSimulator() {
                 </button>
               </div>
 
-              {/* Aksi 2: Ambil / Hilangkan Fisik E0040024 dari L05 */}
+              {/* Aksi 2: Ambil / Hilangkan Fisik E0040024 dari L03 */}
               <div className="p-2.5 rounded-lg bg-[#162a45] border border-[#25466e] flex items-center justify-between">
                 <div>
                   <div className="font-semibold text-slate-200">
@@ -119,9 +119,9 @@ export default function PhysicalVaultSimulator() {
                   <div className="text-[10px] text-slate-400 mt-0.5">
                     Kondisi Fisik:{' '}
                     {isE0040024Removed ? (
-                      <span className="font-bold text-rose-400">DIKELUARKAN / TIDAK ADA</span>
+                      <span className="font-bold text-rose-400">TAG DICABUT (OFFLINE)</span>
                     ) : (
-                      <span className="font-bold text-emerald-400">ADA DI L05</span>
+                      <span className="font-bold text-emerald-400">ADA DI L03</span>
                     )}
                   </div>
                 </div>
@@ -129,7 +129,7 @@ export default function PhysicalVaultSimulator() {
                 <button
                   onClick={() => {
                     if (isE0040024Removed) {
-                      restorePhysicalItem('E0040024', 'L05');
+                      restorePhysicalItem('E0040024', 'L03');
                     } else {
                       removePhysicalItem('E0040024');
                     }
@@ -139,9 +139,10 @@ export default function PhysicalVaultSimulator() {
                       ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
                       : 'bg-rose-600 hover:bg-rose-700 text-white'
                   }`}
+                  title="Cabut tag fisik E0040024 di L03 untuk mensimulasikan selisih"
                 >
                   <AlertTriangle className="w-3 h-3" />
-                  <span>{isE0040024Removed ? 'Masukkan ke L05' : 'Keluarkan dari L05'}</span>
+                  <span>{isE0040024Removed ? 'Pasang Tag ke L03' : 'Cabut Tag Fisik (L03)'}</span>
                 </button>
               </div>
             </div>

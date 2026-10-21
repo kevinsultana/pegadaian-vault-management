@@ -26,50 +26,24 @@ export default function StockOpnamePage() {
     currentRole,
   } = useVaultStore();
 
-  const lg01Total = 605;
-  const lg02Total = 604;
-  const otherCabinetsCount = lg01Total + lg02Total;
-
   const lt01Total = items.length;
   const lt01PhysicallyPresent = items.filter((i) => i.isPhysicallyPresent).length;
   const lt01Selisih = items.filter(
     (i) => !i.isPhysicallyPresent && i.status !== 'RECONCILED_VIRT'
   ).length;
 
-  const totalVaultBook = otherCabinetsCount + lt01Total;
-  const totalPhysicalRead = otherCabinetsCount + lt01PhysicallyPresent;
+  const totalVaultBook = lt01Total;
+  const totalPhysicalRead = lt01PhysicallyPresent;
   const totalSelisih = lt01Selisih;
-  const overallAccuracy = ((totalPhysicalRead / totalVaultBook) * 100).toFixed(2) + '%';
-  const lt01Accuracy = ((lt01PhysicallyPresent / lt01Total) * 100).toFixed(2) + '%';
+  const overallAccuracy = totalVaultBook > 0 ? ((totalPhysicalRead / totalVaultBook) * 100).toFixed(1) + '%' : '100.0%';
+  const lt01Accuracy = overallAccuracy;
 
   const cabinetSummaries = [
     {
-      id: 'LG-01',
-      name: 'Lemari Ganda 01 (Zona WH-505)',
-      compartments: 8,
-      type: 'Lemari Ganda (K1..K8)',
-      bookCount: lg01Total,
-      physicalCount: lg01Total,
-      diffCount: 0,
-      accuracy: '100.00%',
-      status: 'NORMAL',
-    },
-    {
-      id: 'LG-02',
-      name: 'Lemari Ganda 02 (Zona WH-505)',
-      compartments: 8,
-      type: 'Lemari Ganda (K1..K8)',
-      bookCount: lg02Total,
-      physicalCount: lg02Total,
-      diffCount: 0,
-      accuracy: '100.00%',
-      status: 'NORMAL',
-    },
-    {
       id: 'LT-01',
-      name: 'Lemari Tunggal 01 (Sandbox Aktif)',
-      compartments: 12,
-      type: 'Lemari Tunggal (L01..L12)',
+      name: 'Lemari Tunggal 01 (Sandbox PoC Aktif)',
+      compartments: 3,
+      type: 'Lemari Tunggal (L01..L03)',
       bookCount: lt01Total,
       physicalCount: lt01PhysicallyPresent,
       diffCount: lt01Selisih,
@@ -158,7 +132,7 @@ export default function StockOpnamePage() {
             </h3>
           </div>
           <span className="text-[11px] text-slate-400">
-            3 Unit Lemari Vault Terpantau
+            1 Unit Lemari Vault Terpantau (LT-01)
           </span>
         </div>
 

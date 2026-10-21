@@ -13,10 +13,7 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 
-const DRAWER_OPTIONS = [
-  'L01', 'L02', 'L03', 'L04', 'L05', 'L06',
-  'L07', 'L08', 'L09', 'L10', 'L11', 'L12',
-];
+const DRAWER_OPTIONS = ['L01', 'L02', 'L03'];
 
 export default function DrawerInventoryTable() {
   const {
@@ -28,7 +25,7 @@ export default function DrawerInventoryTable() {
     setClassificationModalOpen,
   } = useVaultStore();
 
-  const [activePopoverItemId, setActivePopoverItemId] = useState(null);
+  const [moveTargetItem, setMoveTargetItem] = useState(null);
 
   // Show items registered by system to this drawer
   const drawerItems = items.filter(
@@ -37,7 +34,7 @@ export default function DrawerInventoryTable() {
 
   const handleQuickMovePhysical = (itemId, targetDrawer) => {
     movePhysicalItem(itemId, targetDrawer);
-    setActivePopoverItemId(null);
+    setMoveTargetItem(null);
   };
 
   return (
@@ -77,7 +74,7 @@ export default function DrawerInventoryTable() {
                 </td>
               </tr>
             ) : (
-              drawerItems.map((item) => {
+              drawerItems.map((item, index) => {
                 const isTagOffline = !item.isPhysicallyPresent;
                 const isMisplaced = item.isPhysicallyPresent && item.physicalDrawerId !== (item.systemDrawerId || item.drawerId);
                 const isReconciledVirt = item.status === 'RECONCILED_VIRT';
@@ -137,58 +134,19 @@ export default function DrawerInventoryTable() {
                           <span>Mutasi</span>
                         </button>
 
-                        {/* 2. Tombol Pindah Fisik (Popover) */}
-                        <div className="relative inline-block">
-                          <button
-                            onClick={() =>
-                              setActivePopoverItemId(activePopoverItemId === item.id ? null : item.id)
-                            }
-                            className={`inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold rounded border transition-colors cursor-pointer ${
-                              isMisplaced
-                                ? 'bg-amber-100 border-amber-300 text-amber-900'
-                                : 'bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200'
-                            }`}
-                            title="Simulasikan pemindahan fisik tanpa dokumen (Uji Alert MISPLACED)"
-                          >
-                            <MoveRight className="w-3 h-3 text-amber-600" />
-                            <span>Pindah Fisik</span>
-                          </button>
-
-                          {/* Popover Pilihan Laci Tujuan */}
-                          {activePopoverItemId === item.id && (
-                            <div className="absolute right-0 bottom-full mb-1 z-30 bg-white rounded-lg shadow-xl border border-slate-200 p-2.5 w-48 text-left space-y-2">
-                              <div className="flex items-center justify-between pb-1 border-b border-slate-100">
-                                <span className="text-[10px] font-bold text-slate-700 uppercase">
-                                  Pindah Fisik ke Laci:
-                                </span>
-                                <button
-                                  onClick={() => setActivePopoverItemId(null)}
-                                  className="text-slate-400 hover:text-slate-600"
-                                >
-                                  <X className="w-3 h-3" />
-                                </button>
-                              </div>
-                              <div className="grid grid-cols-4 gap-1">
-                                {DRAWER_OPTIONS.map((d) => (
-                                  <button
-                                    key={d}
-                                    onClick={() => handleQuickMovePhysical(item.id, d)}
-                                    className={`py-1 text-[10px] font-mono font-bold rounded border transition-colors ${
-                                      item.physicalDrawerId === d
-                                        ? 'bg-[#0f233a] text-white border-[#0f233a]'
-                                        : 'bg-slate-50 hover:bg-sky-50 text-slate-700 border-slate-200'
-                                    }`}
-                                  >
-                                    {d}
-                                  </button>
-                                ))}
-                              </div>
-                              <p className="text-[9px] text-slate-400 leading-tight">
-                                Memindahkan fisik tanpa dokumen izin akan memicu status MISPLACED pada scan berikutnya.
-                              </p>
-                            </div>
-                          )}
-                        </div>
+                        {/* 2. Tombol Pindah Fisik (Membuka Modal) */}
+                        <button
+                          onClick={() => setMoveTargetItem(item)}
+                          className={`inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold rounded border transition-colors cursor-pointer ${
+                            isMisplaced
+                              ? 'bg-amber-100 border-amber-300 text-amber-900'
+                              : 'bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200'
+                          }`}
+                          title="Simulasikan pemindahan fisik tanpa dokumen (Uji Alert MISPLACED)"
+                        >
+                          <MoveRight className="w-3 h-3 text-amber-600" />
+                          <span>Pindah Fisik</span>
+                        </button>
 
                         {/* 3. Tombol Cabut / Pasang Tag Fisik */}
                         <button
@@ -237,6 +195,92 @@ export default function DrawerInventoryTable() {
           </tbody>
         </table>
       </div>
+
+      {/* Modal Dialog Pindah Fisik */}
+      {moveTargetItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-sm w-full overflow-hidden">
+            {/* Modal Header */}
+            <div className="bg-[#0f233a] text-white px-5 py-3.5 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <MoveRight className="w-4 h-4 text-amber-400" />
+                <h3 className="font-bold text-xs tracking-wide">
+                  Simulasi Pindah Fisik (Hardware Sandbox)
+                </h3>
+              </div>
+              <button
+                onClick={() => setMoveTargetItem(null)}
+                className="text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 space-y-4">
+              <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-500">Item:</span>
+                  <span className="font-bold text-slate-800">{moveTargetItem.brand}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-500">Tag ID:</span>
+                  <span className="font-mono font-bold text-cyan-700">{moveTargetItem.id}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-500">Register Sistem:</span>
+                  <span className="font-mono font-bold text-slate-700">{moveTargetItem.drawerId}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-500">Posisi Fisik Sekarang:</span>
+                  <span className="font-mono font-bold text-amber-600">{moveTargetItem.physicalDrawerId}</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-2">
+                  Pilih Laci Fisik Tujuan:
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {DRAWER_OPTIONS.map((d) => {
+                    const isCurrent = moveTargetItem.physicalDrawerId === d;
+                    return (
+                      <button
+                        key={d}
+                        onClick={() => handleQuickMovePhysical(moveTargetItem.id, d)}
+                        className={`py-2 px-3 rounded-lg text-xs font-mono font-bold border transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+                          isCurrent
+                            ? 'bg-[#0f233a] text-white border-[#0f233a] shadow-xs'
+                            : 'bg-white hover:bg-sky-50 text-slate-700 border-slate-200 hover:border-sky-300'
+                        }`}
+                      >
+                        <span className="text-sm font-bold">{d}</span>
+                        <span className="text-[10px] font-sans font-normal opacity-80">
+                          {isCurrent ? '(Posisi saat ini)' : 'Pindahkan'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-900 leading-relaxed">
+                <span className="font-bold">Simulasi Uji Coba:</span> Memindahkan fisik keping emas ke laci lain tanpa pengajuan mutasi resmi akan memicu anomali <span className="font-bold font-mono">MISPLACED</span> saat reader RFID melakukan scan berikutnya.
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={() => setMoveTargetItem(null)}
+                  className="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -19,7 +19,7 @@ export default function ReadingSummaryCard() {
     }
   });
   const occupiedDrawers = drawerOccupancy.size;
-  const totalDrawers = 12;
+  const totalDrawers = 3;
 
   return (
     <div className="bg-white rounded-lg border border-slate-200 p-4 shadow-sm">
@@ -47,7 +47,7 @@ export default function ReadingSummaryCard() {
         {/* Waktu baca 1 lemari */}
         <div className="flex items-center justify-between pb-2 border-b border-slate-100">
           <span className="text-slate-500">Waktu baca 1 lemari</span>
-          <span className="font-semibold text-slate-800">{readDuration}</span>
+          <span className="font-semibold text-slate-800">±2 detik</span>
         </div>
 
         {/* Selisih vs sistem */}

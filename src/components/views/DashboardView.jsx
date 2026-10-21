@@ -25,19 +25,19 @@ export default function DashboardView() {
     lastScanTime,
   } = useVaultStore();
 
-  // Dynamic KPI Calculations based on real store state
-  const otherCabinetsCount = 1209;
-  const totalVaultItems = otherCabinetsCount + items.length;
-  const lt01PhysicallyPresentCount = items.filter((i) => i.isPhysicallyPresent).length;
-  const readLastCycle = otherCabinetsCount + lt01PhysicallyPresentCount;
+  // Dynamic KPI Calculations based on real store state (PoC 10 Keping Emas LT-01)
+  const totalVaultItems = items.length;
+  const readLastCycle = items.filter((i) => i.isPhysicallyPresent).length;
 
-  // Selisih Terbuka = hitung otomatis jumlah item LT-01 yang isPhysicallyPresent === false dan belum selesai diberita-acarakan
+  // Selisih = total items yang isPhysicallyPresent === false dan belum selesai diaudit
   const openDifference = items.filter(
     (i) => !i.isPhysicallyPresent && i.status !== 'RECONCILED_VIRT'
   ).length;
 
-  // IRA (Inventory Record Accuracy) = ((Terbaca / Total Item) * 100).toFixed(2) + '%'
-  const accuracy = ((readLastCycle / totalVaultItems) * 100).toFixed(2) + '%';
+  // IRA = ((Terbaca / Total Item) * 100).toFixed(1) + '%'
+  const accuracy = totalVaultItems > 0
+    ? ((readLastCycle / totalVaultItems) * 100).toFixed(1) + '%'
+    : '100.0%';
 
   // Mutasi Hari Ini = hitung jumlah dokumen transfer approved/verified + Berita Acara hari ini
   const approvedTransfersCount = transfers.filter(
@@ -45,10 +45,10 @@ export default function DashboardView() {
   ).length;
   const todayMutations = approvedTransfersCount + beritaAcaraList.length;
 
-  // Dynamic check for LT-01 drawers with selisih
-  const l05HasSelisih = items.some(
+  // Dynamic check for LT-01 drawers with selisih (Skenario L03)
+  const l03HasSelisih = items.some(
     (it) =>
-      (it.systemDrawerId === 'L05' || it.drawerId === 'L05') &&
+      (it.systemDrawerId === 'L03' || it.drawerId === 'L03') &&
       !it.isPhysicallyPresent &&
       it.status !== 'RECONCILED_VIRT'
   );
@@ -89,9 +89,9 @@ export default function DashboardView() {
           </span>
           <div className="mt-2">
             <span className="text-2xl font-bold font-mono text-slate-900 leading-none">
-              {totalVaultItems.toLocaleString('id-ID')}
+              {totalVaultItems}
             </span>
-            <p className="text-[10px] text-slate-400 mt-1">keping emas (1.209 + {items.length} LT-01)</p>
+            <p className="text-[10px] text-slate-400 mt-1">keping emas aktif di lemari LT-01</p>
           </div>
         </div>
 
@@ -102,9 +102,9 @@ export default function DashboardView() {
           </span>
           <div className="mt-2">
             <span className="text-2xl font-bold font-mono text-emerald-600 leading-none">
-              {readLastCycle.toLocaleString('id-ID')}
+              {readLastCycle}
             </span>
-            <p className="text-[10px] text-slate-400 mt-1">dari {totalVaultItems.toLocaleString('id-ID')} tag</p>
+            <p className="text-[10px] text-slate-400 mt-1">dari {totalVaultItems} tag terdeteksi</p>
           </div>
         </div>
 
@@ -154,84 +154,80 @@ export default function DashboardView() {
 
       {/* Row 2: Peta Lemari Zona WH-505 (Left) + Mutasi 7 Hari Terakhir (Right) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Peta Lemari Zona WH-505 (7 cols) */}
-        <div className="lg:col-span-7 bg-white rounded-lg border border-slate-200 p-4 shadow-sm">
+        {/* Peta Lemari Zona WH-505 (7 cols) - Hanya 1 Lemari LT-01 dengan 3 Slot Laci */}
+        <div className="lg:col-span-7 bg-white rounded-lg border border-slate-200 p-4 shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-xs font-bold text-slate-800">
-              Peta lemari — zona WH-505
+              Peta Lemari — LT-01 (Lemari Tunggal 01)
             </h3>
             <span className="text-[10px] text-slate-400">
-              Klik lemari untuk detail
+              3 Kompartemen Laci Terpasang Antena RFID
             </span>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            {/* LG-01 (Lemari Ganda - K1..K8 hijau) */}
-            <div className="border border-slate-200 rounded-lg p-2.5 bg-slate-50/50">
-              <div className="text-[11px] font-bold text-slate-700">LG-01</div>
-              <div className="text-[9px] text-slate-400 mb-2">Lemari Ganda</div>
-              <div className="grid grid-cols-2 gap-1.5">
-                {["K1", "K2", "K3", "K4", "K5", "K6", "K7", "K8"].map((k) => (
-                  <div
-                    key={k}
-                    className="h-6 rounded bg-[#ecfdf5] border border-[#a7f3d0] text-[#065f46] text-[10px] font-mono font-semibold flex items-center justify-center"
-                  >
-                    {k}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* LG-02 (Lemari Ganda - K1..K8 hijau) */}
-            <div className="border border-slate-200 rounded-lg p-2.5 bg-slate-50/50">
-              <div className="text-[11px] font-bold text-slate-700">LG-02</div>
-              <div className="text-[9px] text-slate-400 mb-2">Lemari Ganda</div>
-              <div className="grid grid-cols-2 gap-1.5">
-                {["K1", "K2", "K3", "K4", "K5", "K6", "K7", "K8"].map((k) => (
-                  <div
-                    key={k}
-                    className="h-6 rounded bg-[#ecfdf5] border border-[#a7f3d0] text-[#065f46] text-[10px] font-mono font-semibold flex items-center justify-center"
-                  >
-                    {k}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* LT-01 (Lemari Tunggal - K1..K6, K5 Merah jika selisih ada) */}
-            <div
-              onClick={() => {
-                const targetDrawer = l05HasSelisih ? "L05" : "L01";
-                setSelectedDrawer(targetDrawer);
-                router.push(l05HasSelisih ? "/lemari-laci?drawer=L05" : "/lemari-laci");
-              }}
-              className="border-2 border-dashed border-[#00b4d8] rounded-lg p-2.5 bg-sky-50/30 hover:bg-sky-50 transition-all cursor-pointer relative group"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-900 group-hover:text-[#008ba3]">
-                  LT-01
+          {/* Single Cabinet Card with 3 Drawers */}
+          <div
+            onClick={() => {
+              const targetDrawer = l03HasSelisih ? "L03" : "L01";
+              setSelectedDrawer(targetDrawer);
+              router.push(l03HasSelisih ? "/lemari-laci?drawer=L03" : "/lemari-laci");
+            }}
+            className="border-2 border-dashed border-[#00b4d8] rounded-xl p-4 bg-sky-50/20 hover:bg-sky-50/50 transition-all cursor-pointer relative group"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <span className="text-sm font-bold text-slate-900 group-hover:text-[#008ba3]">
+                  LT-01 (Lemari Tunggal 01)
                 </span>
-                <ChevronRight className="w-3.5 h-3.5 text-[#008ba3] opacity-70 group-hover:opacity-100" />
+                <p className="text-[11px] text-slate-400">Zona Vault WH-505 · Multiplexer Reader Port 1..3</p>
               </div>
-              <div className="text-[9px] text-slate-400 mb-2">
-                Lemari Tunggal (Demo)
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#008ba3] bg-white px-2.5 py-1 rounded-md border border-sky-200 shadow-2xs">
+                <span>Buka Detail Lemari</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </span>
+            </div>
+
+            {/* 3 Drawer Slots (L01, L02, L03) */}
+            <div className="grid grid-cols-3 gap-3">
+              {/* Slot L01 */}
+              <div className="h-16 rounded-lg bg-[#ecfdf5] border border-[#a7f3d0] text-[#065f46] p-2 flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono font-bold">L01</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 font-semibold">KLOP</span>
+                </div>
+                <div className="text-[11px] font-mono text-emerald-900 font-bold">5 / 5 item</div>
               </div>
-              <div className="grid grid-cols-2 gap-1.5">
-                {["K1", "K2", "K3", "K4", "K5", "K6"].map((k) => {
-                  const isK5Alert = k === "K5" && l05HasSelisih;
-                  return (
-                    <div
-                      key={k}
-                      className={`h-6 rounded text-[10px] font-mono font-semibold flex items-center justify-center border ${
-                        isK5Alert
-                          ? "bg-[#fee2e2] border-[#f87171] text-rose-800 animate-pulse font-bold"
-                          : "bg-[#ecfdf5] border-[#a7f3d0] text-[#065f46]"
-                      }`}
-                    >
-                      {isK5Alert ? "K5 · -1" : k}
-                    </div>
-                  );
-                })}
+
+              {/* Slot L02 */}
+              <div className="h-16 rounded-lg bg-[#ecfdf5] border border-[#a7f3d0] text-[#065f46] p-2 flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono font-bold">L02</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 font-semibold">KLOP</span>
+                </div>
+                <div className="text-[11px] font-mono text-emerald-900 font-bold">3 / 3 item</div>
+              </div>
+
+              {/* Slot L03 (Merah jika ada selisih) */}
+              <div
+                className={`h-16 rounded-lg p-2 flex flex-col justify-between border transition-all ${
+                  l03HasSelisih
+                    ? 'bg-[#fee2e2] border-[#f87171] text-rose-900 shadow-xs'
+                    : 'bg-[#ecfdf5] border-[#a7f3d0] text-[#065f46]'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono font-bold">L03</span>
+                  {l03HasSelisih ? (
+                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-rose-200 text-rose-900 font-bold animate-pulse">
+                      SELISIH -1
+                    </span>
+                  ) : (
+                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 font-semibold">KLOP</span>
+                  )}
+                </div>
+                <div className={`text-[11px] font-mono font-bold ${l03HasSelisih ? 'text-rose-700' : 'text-emerald-900'}`}>
+                  {l03HasSelisih ? '1 / 2 terbaca' : '2 / 2 item'}
+                </div>
               </div>
             </div>
           </div>
