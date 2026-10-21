@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useVaultStore } from '../../store/useVaultStore';
 import {
   AlertTriangle,
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react';
 
 export default function AlertView() {
+  const router = useRouter();
   const {
     alerts,
     items,
@@ -44,9 +46,10 @@ export default function AlertView() {
       items.find((i) => !i.isPhysicallyPresent) ||
       items[0];
 
-    setSelectedDrawer(alert.drawer || 'L05');
-    setActiveView('lemari-laci');
+    const targetDrawer = alert.drawer || 'L05';
+    setSelectedDrawer(targetDrawer);
     setClassificationModalOpen(true, 'MISSING', targetItem);
+    router.push(`/lemari-laci?drawer=${targetDrawer}`);
   };
 
   return (
@@ -270,8 +273,9 @@ export default function AlertView() {
                         {isMisplacedAlert && (
                           <button
                             onClick={() => {
-                              setActiveView('lemari-laci');
-                              if (alt.drawer) setSelectedDrawer(alt.drawer);
+                              const target = alt.drawer || 'L02';
+                              setSelectedDrawer(target);
+                              router.push(`/lemari-laci?drawer=${target}`);
                             }}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
                           >
@@ -282,7 +286,7 @@ export default function AlertView() {
 
                         {isApprovalAlert && (
                           <button
-                            onClick={() => setActiveView('approval')}
+                            onClick={() => router.push('/approval')}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
                           >
                             <ArrowRight className="w-3.5 h-3.5" />

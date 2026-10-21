@@ -1,6 +1,7 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useVaultStore } from '../../store/useVaultStore';
 import DrawerMatrix from '../DrawerMatrix';
 import DrawerInventoryTable from '../DrawerInventoryTable';
@@ -17,6 +18,9 @@ import {
 } from 'lucide-react';
 
 export default function DrawerMonitorView() {
+  const searchParams = useSearchParams();
+  const drawerParam = searchParams.get('drawer');
+
   const {
     items,
     transfers,
@@ -28,7 +32,14 @@ export default function DrawerMonitorView() {
     isScanning,
     physicalInteractionMode,
     togglePhysicalInteractionMode,
+    setSelectedDrawer,
   } = useVaultStore();
+
+  useEffect(() => {
+    if (drawerParam) {
+      setSelectedDrawer(drawerParam);
+    }
+  }, [drawerParam, setSelectedDrawer]);
 
   // Check if there are active missing items / selisih
   const missingItems = items.filter((it) => it.status === 'MISSING');

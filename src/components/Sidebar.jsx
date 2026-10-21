@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { useVaultStore } from '../store/useVaultStore';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   Boxes,
@@ -14,17 +15,17 @@ import {
 } from 'lucide-react';
 
 export default function Sidebar() {
-  const { activeView, setActiveView } = useVaultStore();
+  const pathname = usePathname();
 
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'inventory', label: 'Inventory', icon: Boxes },
-    { id: 'lemari-laci', label: 'Lemari & Laci', icon: Layers },
-    { id: 'stock-opname', label: 'Stock Opname', icon: ClipboardCheck },
-    { id: 'approval', label: 'Approval', icon: CheckCircle2 },
-    { id: 'alert', label: 'Alert', icon: AlertTriangle },
-    { id: 'audit-trail', label: 'Audit Trail', icon: History },
-    { id: 'laporan', label: 'Laporan', icon: FileBarChart2 },
+    { id: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+    { id: 'inventory', label: 'Inventory', href: '/inventory', icon: Boxes },
+    { id: 'lemari-laci', label: 'Lemari & Laci', href: '/lemari-laci', icon: Layers },
+    { id: 'stock-opname', label: 'Stock Opname', href: '/stock-opname', icon: ClipboardCheck },
+    { id: 'approval', label: 'Approval', href: '/approval', icon: CheckCircle2 },
+    { id: 'alert', label: 'Alert', href: '/alert', icon: AlertTriangle },
+    { id: 'audit-trail', label: 'Audit Trail', href: '/audit-trail', icon: History },
+    { id: 'laporan', label: 'Laporan', href: '/laporan', icon: FileBarChart2 },
   ];
 
   return (
@@ -33,11 +34,16 @@ export default function Sidebar() {
       <nav className="py-2">
         {menuItems.map((item) => {
           const Icon = item.icon;
-          const isActive = activeView === item.id;
+          const isDashboard = item.href === '/dashboard';
+          const isActive =
+            pathname === item.href ||
+            (!isDashboard && pathname?.startsWith(item.href)) ||
+            (isDashboard && pathname === '/');
+
           return (
-            <button
+            <Link
               key={item.id}
-              onClick={() => setActiveView(item.id)}
+              href={item.href}
               className={`w-full flex items-center px-5 py-3 text-[13px] font-medium transition-colors text-left relative ${
                 isActive
                   ? 'bg-[#008ba3] text-white font-semibold'
@@ -50,7 +56,7 @@ export default function Sidebar() {
               )}
               <Icon className="w-4 h-4 mr-3 opacity-90" />
               <span>{item.label}</span>
-            </button>
+            </Link>
           );
         })}
       </nav>

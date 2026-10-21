@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import { useVaultStore } from "../../store/useVaultStore";
 import {
   Boxes,
@@ -12,6 +13,7 @@ import {
 } from "lucide-react";
 
 export default function DashboardView() {
+  const router = useRouter();
   const {
     alerts,
     rfidLogs,
@@ -199,8 +201,9 @@ export default function DashboardView() {
             {/* LT-01 (Lemari Tunggal - K1..K6, K5 Merah jika selisih ada) */}
             <div
               onClick={() => {
-                setActiveView("lemari-laci");
-                setSelectedDrawer(l05HasSelisih ? "L05" : "L01");
+                const targetDrawer = l05HasSelisih ? "L05" : "L01";
+                setSelectedDrawer(targetDrawer);
+                router.push(l05HasSelisih ? "/lemari-laci?drawer=L05" : "/lemari-laci");
               }}
               className="border-2 border-dashed border-[#00b4d8] rounded-lg p-2.5 bg-sky-50/30 hover:bg-sky-50 transition-all cursor-pointer relative group"
             >
@@ -325,10 +328,16 @@ export default function DashboardView() {
                   key={alt.id}
                   onClick={() => {
                     if (alt.type === "APPROVAL") {
-                      setActiveView("approval");
+                      router.push("/approval");
+                    } else if (alt.type === "SELISIH") {
+                      const target = alt.drawer || "L05";
+                      setSelectedDrawer(target);
+                      router.push(`/lemari-laci?drawer=${target}`);
+                    } else if (alt.drawer) {
+                      setSelectedDrawer(alt.drawer);
+                      router.push(`/lemari-laci?drawer=${alt.drawer}`);
                     } else {
-                      setActiveView("lemari-laci");
-                      if (alt.drawer) setSelectedDrawer(alt.drawer);
+                      router.push("/alert");
                     }
                   }}
                   className={`flex items-center justify-between p-3 rounded-lg border ${bg} hover:opacity-90 cursor-pointer transition-all`}
