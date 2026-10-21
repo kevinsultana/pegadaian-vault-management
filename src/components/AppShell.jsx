@@ -11,17 +11,17 @@ import BeritaAcaraModal from './modals/BeritaAcaraModal';
 
 export default function AppShell({ children }) {
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-800 flex flex-col antialiased selection:bg-[#00b4d8] selection:text-[#0f233a]">
+    <div className="h-screen w-full flex flex-col overflow-hidden bg-slate-100 text-slate-800 antialiased selection:bg-[#00b4d8] selection:text-[#0f233a]">
       {/* Top Header with Role Switcher */}
       <Header />
 
       {/* Body Layout: Sidebar + Main Content */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Left Navigation Sidebar */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Navigation Sidebar (Fixed, Non-scrolling with Content) */}
         <Sidebar />
 
-        {/* Dynamic Center Stage */}
-        <main className="flex-1 overflow-y-auto p-5 pb-24 md:p-6 md:pb-28">
+        {/* Dynamic Center Stage (Only Main Content Scrolls) */}
+        <main className="flex-1 overflow-y-auto p-6 pb-24">
           <div className="max-w-360 mx-auto">
             {children}
           </div>

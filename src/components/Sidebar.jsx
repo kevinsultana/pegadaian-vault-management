@@ -29,7 +29,7 @@ export default function Sidebar() {
   ];
 
   return (
-    <aside className="w-56 bg-[#0f233a] text-slate-300 flex flex-col justify-between select-none shrink-0 border-r border-[#1c3755] min-h-[calc(100vh-45px)]">
+    <aside className="w-56 bg-[#0f233a] text-slate-300 flex flex-col justify-between select-none h-full shrink-0 overflow-y-auto border-r border-[#1c3755]">
       {/* Navigation List */}
       <nav className="py-2">
         {menuItems.map((item) => {
