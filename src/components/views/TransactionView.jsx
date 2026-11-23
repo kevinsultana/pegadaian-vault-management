@@ -261,12 +261,28 @@ export default function TransactionView() {
                     </span>
                   );
                   if (t.type === 'OUTBOUND') {
-                    typeBadge = (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
-                        <ArrowUpRight className="w-3 h-3" />
-                        OUTBOUND
-                      </span>
-                    );
+                    if (t.outboundCategory === 'MUTASI_INTERNAL') {
+                      typeBadge = (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-sky-100 text-sky-800 border border-sky-300">
+                          <ArrowLeftRight className="w-3 h-3" />
+                          OUTBOUND · MUTASI
+                        </span>
+                      );
+                    } else if (t.outboundCategory === 'RELOKASI_EKSTERNAL') {
+                      typeBadge = (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-300">
+                          <ArrowUpRight className="w-3 h-3" />
+                          OUTBOUND · RELOKASI
+                        </span>
+                      );
+                    } else {
+                      typeBadge = (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                          <ArrowUpRight className="w-3 h-3" />
+                          OUTBOUND · TEBUS
+                        </span>
+                      );
+                    }
                   } else if (t.type === 'MUTASI') {
                     typeBadge = (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-sky-100 text-sky-800 border border-sky-300">
@@ -325,9 +341,19 @@ export default function TransactionView() {
                             → {t.targetSlotId}
                           </span>
                         ) : t.type === 'OUTBOUND' ? (
-                          <span className="font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
-                            {t.sourceSlotId} → KELUAR
-                          </span>
+                          t.outboundCategory === 'MUTASI_INTERNAL' ? (
+                            <span className="font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded border border-sky-200">
+                              {t.sourceSlotId} → {t.targetSlotId} (Mutasi)
+                            </span>
+                          ) : t.outboundCategory === 'RELOKASI_EKSTERNAL' ? (
+                            <span className="font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200" title={t.destinationLocation || ''}>
+                              {t.sourceSlotId} → {t.destinationLocation ? t.destinationLocation.split('(')[0].trim() : 'Relokasi'}
+                            </span>
+                          ) : (
+                            <span className="font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                              {t.sourceSlotId} → Tebus Nasabah
+                            </span>
+                          )
                         ) : (
                           <span className="font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded border border-sky-200">
                             {t.sourceSlotId} → {t.targetSlotId}

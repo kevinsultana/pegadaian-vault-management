@@ -43,7 +43,7 @@ export default function DashboardView() {
   const isSPI = currentRole === 'SPI';
 
   // Dynamic KPI Calculations based on active vault items
-  const activeItems = items.filter((i) => i.status !== 'DITEBUS');
+  const activeItems = items.filter((i) => i.status !== 'DITEBUS' && i.status !== 'RELOKASI_KELUAR');
   const totalVaultItems = activeItems.length;
   const readLastCycle = activeItems.filter((i) => i.isPhysicallyPresent).length;
 

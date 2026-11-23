@@ -253,25 +253,54 @@ export const useVaultStore = create(
       },
 
       // -------------------------------------------------------------
-      // TRANSAKSI ACTION: CREATE OUTBOUND
+      // TRANSAKSI ACTION: CREATE OUTBOUND (TEBUS, MUTASI, ATAU RELOKASI)
       // -------------------------------------------------------------
       createOutboundTransaction: (payload) => {
-        const { itemId, reason, notes } = payload;
+        const {
+          itemId,
+          outboundCategory = 'TEBUS_NASABAH', // 'TEBUS_NASABAH' | 'MUTASI_INTERNAL' | 'RELOKASI_EKSTERNAL'
+          targetDrawerId = null,
+          targetSlotId = null,
+          destinationLocation = null,
+          referenceNumber = null,
+          reason,
+          notes,
+        } = payload;
         const item = get().items.find((i) => i.id === itemId);
         if (!item) {
           get().addToast('Barang tidak ditemukan di inventori!', 'error');
           return false;
         }
 
-        // Check if already in pending/approved outbound
+        // Jika Mutasi Internal, pastikan slot tujuan valid dan tidak terisi
+        if (outboundCategory === 'MUTASI_INTERNAL') {
+          if (!targetSlotId) {
+            get().addToast('Pilih slot tujuan untuk mutasi internal!', 'error');
+            return false;
+          }
+          const existingItemInSlot = get().items.find(
+            (i) =>
+              i.slotId === targetSlotId &&
+              i.id !== itemId &&
+              i.status !== 'DITEBUS' &&
+              i.status !== 'RELOKASI_KELUAR' &&
+              i.status !== 'RECONCILED_VIRT'
+          );
+          if (existingItemInSlot) {
+            get().addToast(`Slot ${targetSlotId} sudah terisi oleh ${existingItemInSlot.brand} (${existingItemInSlot.id})!`, 'error');
+            return false;
+          }
+        }
+
+        // Check if already in pending/approved outbound or mutasi
         const existingOutbound = get().transactions.find(
           (t) =>
             t.itemId === itemId &&
-            t.type === 'OUTBOUND' &&
+            (t.type === 'OUTBOUND' || t.type === 'MUTASI') &&
             (t.status === 'PENDING_APPROVAL' || t.status === 'APPROVED')
         );
         if (existingOutbound) {
-          get().addToast(`Barang ${itemId} sudah dalam proses pengeluaran (${existingOutbound.id})!`, 'warning');
+          get().addToast(`Barang ${itemId} sudah dalam proses pengeluaran/mutasi (${existingOutbound.id})!`, 'warning');
           return false;
         }
 
@@ -282,9 +311,17 @@ export const useVaultStore = create(
         const trxId = `TRX-OUT-${year}${month}-${count}`;
         const timeStr = date.toLocaleString('id-ID');
 
+        const defaultReason =
+          outboundCategory === 'TEBUS_NASABAH'
+            ? 'Pelunasan Tebus Akad Gadai oleh Nasabah'
+            : outboundCategory === 'MUTASI_INTERNAL'
+            ? 'Mutasi / Rotasi Internal Laci Brankas'
+            : `Relokasi Eksternal ke ${destinationLocation || 'Kantor Cabang / Lelang'}`;
+
         const newTrx = {
           id: trxId,
           type: 'OUTBOUND',
+          outboundCategory, // 'TEBUS_NASABAH' | 'MUTASI_INTERNAL' | 'RELOKASI_EKSTERNAL'
           itemId: item.id,
           itemBrand: item.brand,
           weight: item.weight,
@@ -294,11 +331,13 @@ export const useVaultStore = create(
           customerPhone: item.customer?.phone || '-',
           sourceDrawerId: item.systemDrawerId || item.drawerId,
           sourceSlotId: item.slotId,
-          targetDrawerId: null,
-          targetSlotId: null,
+          targetDrawerId: outboundCategory === 'MUTASI_INTERNAL' ? targetDrawerId : null,
+          targetSlotId: outboundCategory === 'MUTASI_INTERNAL' ? targetSlotId : null,
+          destinationLocation: outboundCategory === 'RELOKASI_EKSTERNAL' ? destinationLocation : null,
+          referenceNumber: referenceNumber || null,
           requestedBy: 'staff.bisnis01',
           requestTime: timeStr,
-          reason: reason || 'Pelunasan Tebus Akad Gadai',
+          reason: reason || defaultReason,
           notes: notes || '-',
           status: 'PENDING_APPROVAL',
           approvedBy: null,
@@ -307,10 +346,17 @@ export const useVaultStore = create(
           executedTime: null,
         };
 
+        const categoryLabel =
+          outboundCategory === 'TEBUS_NASABAH'
+            ? 'Tebus Nasabah'
+            : outboundCategory === 'MUTASI_INTERNAL'
+            ? 'Mutasi Internal'
+            : 'Relokasi Eksternal';
+
         const newLog = {
           id: `log-trx-${Date.now()}`,
           time: new Date().toLocaleTimeString('id-ID'),
-          title: 'Pengajuan Outbound (Tebus)',
+          title: `Pengajuan Outbound (${categoryLabel})`,
           detail: `${trxId} · ${item.id} (${item.brand}) dari ${item.slotId} · Menunggu Supervisor`,
           type: 'outbound',
           color: 'blue',
@@ -318,7 +364,7 @@ export const useVaultStore = create(
 
         get().addAuditTrail(
           'PENGAJUAN_OUTBOUND',
-          `Staff Bisnis mengajukan Outbound ${trxId}: ${item.id} (${item.brand}) untuk ditebus`,
+          `Staff Bisnis mengajukan Outbound [${categoryLabel}] ${trxId}: ${item.id} (${item.brand})`,
           'PENDING'
         );
 
@@ -329,7 +375,7 @@ export const useVaultStore = create(
           outboundTargetItem: null,
         });
 
-        get().addToast(`Pengajuan Outbound ${trxId} berhasil dibuat. Menunggu persetujuan Supervisor.`, 'success');
+        get().addToast(`Pengajuan Outbound [${categoryLabel}] ${trxId} berhasil dibuat. Menunggu persetujuan Supervisor.`, 'success');
         return true;
       },
 
@@ -581,54 +627,157 @@ export const useVaultStore = create(
             'BERHASIL'
           );
         } else if (trx.type === 'OUTBOUND') {
-          // Mengambil barang tebusan dari laci
-          updatedItems = updatedItems.map((it) => {
-            if (it.id === trx.itemId) {
-              return {
-                ...it,
-                isPhysicallyPresent: false,
-                slotId: null, // Slot laci kini kosong!
-                status: 'DITEBUS',
-                history: [
-                  ...it.history,
-                  {
-                    id: `H-${Date.now()}-4`,
-                    timestamp: trx.requestTime,
-                    event: 'OUTBOUND_REQ',
-                    title: 'Pengajuan Penebusan',
-                    actor: trx.requestedBy,
-                    role: 'Staff Bisnis',
-                    details: `Pengajuan pengeluaran barang tebus SBG: ${trx.sbg}.`,
-                  },
-                  {
-                    id: `H-${Date.now()}-5`,
-                    timestamp: trx.approvedTime,
-                    event: 'APPROVAL',
-                    title: 'Disetujui Supervisor',
-                    actor: trx.approvedBy,
-                    role: 'Supervisor Vault',
-                    details: `Otorisasi pengeluaran ${trx.id}.`,
-                  },
-                  {
-                    id: `H-${Date.now()}-6`,
-                    timestamp: timeStr,
-                    event: 'OUTBOUND',
-                    title: 'Fisik Diambil & Diserahkan',
-                    actor: 'petugas.vault01',
-                    role: 'Petugas Vault',
-                    details: `Barang fisik diambil dari ${trx.sourceSlotId} dan diserahkan ke nasabah. Slot kembali kosong.`,
-                  },
-                ],
-              };
-            }
-            return it;
-          });
+          if (trx.outboundCategory === 'MUTASI_INTERNAL') {
+            // Memindahkan keping emas ke kompartemen laci & slot baru
+            updatedItems = updatedItems.map((it) => {
+              if (it.id === trx.itemId) {
+                return {
+                  ...it,
+                  drawerId: trx.targetDrawerId,
+                  systemDrawerId: trx.targetDrawerId,
+                  physicalDrawerId: trx.targetDrawerId,
+                  slotId: trx.targetSlotId,
+                  status: 'TERBACA',
+                  history: [
+                    ...it.history,
+                    {
+                      id: `H-${Date.now()}-out-mut-1`,
+                      timestamp: trx.requestTime,
+                      event: 'OUTBOUND_REQ',
+                      title: 'Pengajuan Outbound (Mutasi Internal)',
+                      actor: trx.requestedBy,
+                      role: 'Staff Bisnis',
+                      details: `Pengajuan pemindahan slot dari ${trx.sourceSlotId} ke ${trx.targetSlotId}.`,
+                    },
+                    {
+                      id: `H-${Date.now()}-out-mut-2`,
+                      timestamp: trx.approvedTime,
+                      event: 'APPROVAL',
+                      title: 'Disetujui Supervisor',
+                      actor: trx.approvedBy,
+                      role: 'Supervisor Vault',
+                      details: `Otorisasi pemindahan lokasi nomor ${trx.id}.`,
+                    },
+                    {
+                      id: `H-${Date.now()}-out-mut-3`,
+                      timestamp: timeStr,
+                      event: 'MUTASI',
+                      title: 'Pemindahan Fisik & Update Slot Selesai',
+                      actor: 'petugas.vault01',
+                      role: 'Petugas Vault',
+                      details: `Keping emas dipindahkan dari ${trx.sourceSlotId} ke ${trx.targetSlotId}. Terverifikasi RFID reader.`,
+                    },
+                  ],
+                };
+              }
+              return it;
+            });
 
-          get().addAuditTrail(
-            'EKSEKUSI_OUTBOUND_FISIK',
-            `Petugas mengambil fisik ${trx.itemId} dari slot ${trx.sourceSlotId} untuk diserahkan ke nasabah. Slot kini KOSONG.`,
-            'BERHASIL'
-          );
+            get().addAuditTrail(
+              'EKSEKUSI_MUTASI_FISIK',
+              `Petugas memindahkan fisik ${trx.itemId} dari ${trx.sourceSlotId} ke ${trx.targetSlotId} (Outbound Mutasi). Slot lama kini bebas.`,
+              'BERHASIL'
+            );
+          } else if (trx.outboundCategory === 'RELOKASI_EKSTERNAL') {
+            // Mengeluarkan keping emas untuk dikirim ke cabang lain/kanwil/lelang
+            updatedItems = updatedItems.map((it) => {
+              if (it.id === trx.itemId) {
+                return {
+                  ...it,
+                  isPhysicallyPresent: false,
+                  slotId: null, // Slot laci kini kosong!
+                  status: 'RELOKASI_KELUAR',
+                  destinationLocation: trx.destinationLocation || 'Kantor Wilayah VIII',
+                  history: [
+                    ...it.history,
+                    {
+                      id: `H-${Date.now()}-out-rel-1`,
+                      timestamp: trx.requestTime,
+                      event: 'OUTBOUND_REQ',
+                      title: 'Pengajuan Outbound (Relokasi Eksternal)',
+                      actor: trx.requestedBy,
+                      role: 'Staff Bisnis',
+                      details: `Pengajuan relokasi ke ${trx.destinationLocation || 'Unit Kerja Baru'} (Surat: ${trx.referenceNumber || '-'}).`,
+                    },
+                    {
+                      id: `H-${Date.now()}-out-rel-2`,
+                      timestamp: trx.approvedTime,
+                      event: 'APPROVAL',
+                      title: 'Disetujui Supervisor',
+                      actor: trx.approvedBy,
+                      role: 'Supervisor Vault',
+                      details: `Otorisasi relokasi eksternal nomor ${trx.id}.`,
+                    },
+                    {
+                      id: `H-${Date.now()}-out-rel-3`,
+                      timestamp: timeStr,
+                      event: 'OUTBOUND',
+                      title: 'Fisik Dikeluarkan untuk Relokasi',
+                      actor: 'petugas.vault01',
+                      role: 'Petugas Vault',
+                      details: `Keping emas diambil dari ${trx.sourceSlotId} dan disiapkan untuk ekspedisi/relokasi ke ${trx.destinationLocation || 'Unit Kerja Baru'}. Slot laci kembali kosong.`,
+                    },
+                  ],
+                };
+              }
+              return it;
+            });
+
+            get().addAuditTrail(
+              'EKSEKUSI_RELOKASI_FISIK',
+              `Petugas mengeluarkan fisik ${trx.itemId} dari slot ${trx.sourceSlotId} untuk relokasi ke ${trx.destinationLocation || 'Unit Kerja Baru'}. Slot laci kini KOSONG.`,
+              'BERHASIL'
+            );
+          } else {
+            // TEBUS_NASABAH (Pelunasan Akad Gadai)
+            updatedItems = updatedItems.map((it) => {
+              if (it.id === trx.itemId) {
+                return {
+                  ...it,
+                  isPhysicallyPresent: false,
+                  slotId: null, // Slot laci kini kosong!
+                  status: 'DITEBUS',
+                  history: [
+                    ...it.history,
+                    {
+                      id: `H-${Date.now()}-4`,
+                      timestamp: trx.requestTime,
+                      event: 'OUTBOUND_REQ',
+                      title: 'Pengajuan Penebusan',
+                      actor: trx.requestedBy,
+                      role: 'Staff Bisnis',
+                      details: `Pengajuan pengeluaran barang tebus SBG: ${trx.sbg}.`,
+                    },
+                    {
+                      id: `H-${Date.now()}-5`,
+                      timestamp: trx.approvedTime,
+                      event: 'APPROVAL',
+                      title: 'Disetujui Supervisor',
+                      actor: trx.approvedBy,
+                      role: 'Supervisor Vault',
+                      details: `Otorisasi pengeluaran ${trx.id}.`,
+                    },
+                    {
+                      id: `H-${Date.now()}-6`,
+                      timestamp: timeStr,
+                      event: 'OUTBOUND',
+                      title: 'Fisik Diambil & Diserahkan',
+                      actor: 'petugas.vault01',
+                      role: 'Petugas Vault',
+                      details: `Barang fisik diambil dari ${trx.sourceSlotId} dan diserahkan ke nasabah. Slot kembali kosong.`,
+                    },
+                  ],
+                };
+              }
+              return it;
+            });
+
+            get().addAuditTrail(
+              'EKSEKUSI_OUTBOUND_FISIK',
+              `Petugas mengambil fisik ${trx.itemId} dari slot ${trx.sourceSlotId} untuk diserahkan ke nasabah. Slot kini KOSONG.`,
+              'BERHASIL'
+            );
+          }
         } else if (trx.type === 'MUTASI') {
           // Memindahkan barang ke laci/slot baru
           updatedItems = updatedItems.map((it) => {
@@ -753,7 +902,9 @@ export const useVaultStore = create(
         set({ isScanning: true });
         const timeStr = new Date().toLocaleTimeString('id-ID');
         const currentItems = get().items;
-        const activeItems = currentItems.filter((i) => i.status !== 'DITEBUS' && i.status !== 'RECONCILED_VIRT');
+        const activeItems = currentItems.filter(
+          (i) => i.status !== 'DITEBUS' && i.status !== 'RELOKASI_KELUAR' && i.status !== 'RECONCILED_VIRT'
+        );
 
         const totalRead = activeItems.filter((i) => i.isPhysicallyPresent).length;
         const totalSelisih = activeItems.filter((i) => !i.isPhysicallyPresent).length;

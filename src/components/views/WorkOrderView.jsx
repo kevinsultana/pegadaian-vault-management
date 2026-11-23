@@ -168,12 +168,28 @@ export default function WorkOrderView() {
                     </span>
                   );
                   if (wo.type === 'OUTBOUND') {
-                    taskBadge = (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
-                        <ArrowUpRight className="w-3 h-3" />
-                        AMBIL EMAS (OUTBOUND)
-                      </span>
-                    );
+                    if (wo.outboundCategory === 'MUTASI_INTERNAL') {
+                      taskBadge = (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-sky-100 text-sky-800 border border-sky-300">
+                          <ArrowRightLeft className="w-3 h-3" />
+                          MUTASI INTERNAL LACI
+                        </span>
+                      );
+                    } else if (wo.outboundCategory === 'RELOKASI_EKSTERNAL') {
+                      taskBadge = (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-300">
+                          <ArrowUpRight className="w-3 h-3" />
+                          RELOKASI EKSTERNAL
+                        </span>
+                      );
+                    } else {
+                      taskBadge = (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                          <ArrowUpRight className="w-3 h-3" />
+                          PENEBUSAN NASABAH
+                        </span>
+                      );
+                    }
                   } else if (wo.type === 'MUTASI') {
                     taskBadge = (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-sky-100 text-sky-800 border border-sky-300">
@@ -201,9 +217,19 @@ export default function WorkOrderView() {
                             Masukkan ke: <strong>{wo.targetSlotId}</strong> (Laci {wo.targetDrawerId})
                           </div>
                         ) : wo.type === 'OUTBOUND' ? (
-                          <div className="font-semibold text-rose-800 bg-rose-50 px-2.5 py-1 rounded border border-rose-200 inline-block font-mono text-[11px]">
-                            Ambil dari: <strong>{wo.sourceSlotId}</strong> (Laci {wo.sourceDrawerId})
-                          </div>
+                          wo.outboundCategory === 'MUTASI_INTERNAL' ? (
+                            <div className="font-semibold text-sky-800 bg-sky-50 px-2.5 py-1 rounded border border-sky-200 inline-block font-mono text-[11px]">
+                              Pindah: <strong>{wo.sourceSlotId}</strong> → <strong>{wo.targetSlotId}</strong>
+                            </div>
+                          ) : wo.outboundCategory === 'RELOKASI_EKSTERNAL' ? (
+                            <div className="font-semibold text-purple-800 bg-purple-50 px-2.5 py-1 rounded border border-purple-200 inline-block font-mono text-[11px]">
+                              Keluarkan dari: <strong>{wo.sourceSlotId}</strong> → {wo.destinationLocation ? wo.destinationLocation.split('(')[0].trim() : 'Relokasi Cabang'}
+                            </div>
+                          ) : (
+                            <div className="font-semibold text-rose-800 bg-rose-50 px-2.5 py-1 rounded border border-rose-200 inline-block font-mono text-[11px]">
+                              Ambil dari: <strong>{wo.sourceSlotId}</strong> (Laci {wo.sourceDrawerId}) → Serahkan ke Nasabah
+                            </div>
+                          )
                         ) : (
                           <div className="font-semibold text-sky-800 bg-sky-50 px-2.5 py-1 rounded border border-sky-200 inline-block font-mono text-[11px]">
                             Pindahkan: <strong>{wo.sourceSlotId}</strong> → <strong>{wo.targetSlotId}</strong>

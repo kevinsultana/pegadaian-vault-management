@@ -35,7 +35,8 @@ export default function ItemDetailModal() {
   const item = selectedItemDetail;
   const customer = item.customer || {};
   const history = item.history || [];
-  const isAvailableForAction = item.status !== 'DITEBUS' && item.status !== 'RECONCILED_VIRT';
+  const isAvailableForAction =
+    item.status !== 'DITEBUS' && item.status !== 'RELOKASI_KELUAR' && item.status !== 'RECONCILED_VIRT';
   const canPerformAction = currentRole === 'STAFF_BISNIS' || currentRole === 'PETUGAS';
 
   const handleOpenOutbound = () => {
@@ -87,7 +88,7 @@ export default function ItemDetailModal() {
               <MapPin className="w-4 h-4 text-[#008ba3]" />
               <span className="text-slate-600 font-medium">Alokasi Slot Brankas:</span>
               <span className="font-mono font-bold text-sm text-slate-900 bg-sky-100 px-2.5 py-0.5 rounded border border-sky-300">
-                {item.slotId || 'KOSONG / SUDAH DITEBUS'}
+                {item.slotId || (item.status === 'RELOKASI_KELUAR' ? `RELOKASI: ${item.destinationLocation || 'CABANG LAIN'}` : 'KOSONG / SUDAH DITEBUS')}
               </span>
             </div>
 
@@ -99,6 +100,8 @@ export default function ItemDetailModal() {
                     ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
                     : item.status === 'DITEBUS'
                     ? 'bg-purple-100 text-purple-800 border-purple-300'
+                    : item.status === 'RELOKASI_KELUAR'
+                    ? 'bg-indigo-100 text-indigo-800 border-indigo-300'
                     : 'bg-rose-100 text-rose-800 border-rose-300'
                 }`}
               >

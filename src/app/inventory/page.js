@@ -37,7 +37,7 @@ export default function InventoryPage() {
   const [selectedDrawerFilter, setSelectedDrawerFilter] = useState('SEMUA');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('ALL');
 
-  const activeItems = items.filter((i) => i.status !== 'DITEBUS');
+  const activeItems = items.filter((i) => i.status !== 'DITEBUS' && i.status !== 'RELOKASI_KELUAR');
   const totalTags = activeItems.length;
   const onlineTagsCount = activeItems.filter((i) => i.isPhysicallyPresent).length;
   const offlineTagsCount = activeItems.filter((i) => !i.isPhysicallyPresent && i.status !== 'RECONCILED_VIRT').length;
@@ -54,14 +54,15 @@ export default function InventoryPage() {
       item.drawerId === selectedDrawerFilter;
 
     let matchesStatus = true;
+    const isOut = item.status === 'DITEBUS' || item.status === 'RELOKASI_KELUAR';
     if (selectedStatusFilter === 'ONLINE') {
-      matchesStatus = item.isPhysicallyPresent && item.status !== 'DITEBUS';
+      matchesStatus = item.isPhysicallyPresent && !isOut;
     } else if (selectedStatusFilter === 'OFFLINE') {
-      matchesStatus = !item.isPhysicallyPresent && item.status !== 'DITEBUS';
+      matchesStatus = !item.isPhysicallyPresent && !isOut;
     } else if (selectedStatusFilter === 'MISPLACED') {
       matchesStatus = item.isPhysicallyPresent && item.physicalDrawerId !== (item.systemDrawerId || item.drawerId);
     } else if (selectedStatusFilter === 'DITEBUS') {
-      matchesStatus = item.status === 'DITEBUS';
+      matchesStatus = isOut;
     }
 
     const q = searchQuery.toLowerCase();
@@ -136,13 +137,13 @@ export default function InventoryPage() {
 
         <div className="bg-white p-3.5 rounded-lg border border-slate-200 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold text-slate-500">Sudah Ditebus (Keluar)</span>
+            <span className="text-[11px] font-semibold text-slate-500">Keluar (Tebus / Relokasi)</span>
             <ArrowUpRight className="w-4 h-4 text-purple-600" />
           </div>
           <p className="text-xl font-bold font-mono text-purple-700 mt-1">
-            {items.filter((i) => i.status === 'DITEBUS').length}
+            {items.filter((i) => i.status === 'DITEBUS' || i.status === 'RELOKASI_KELUAR').length}
           </p>
-          <p className="text-[10px] text-slate-400 mt-0.5">Slot kembali kosong</p>
+          <p className="text-[10px] text-slate-400 mt-0.5">Slot laci bebas / kosong</p>
         </div>
       </div>
 
@@ -220,7 +221,9 @@ export default function InventoryPage() {
               ) : (
                 filteredItems.map((item) => {
                   const isDitebus = item.status === 'DITEBUS';
-                  const isTagOffline = !item.isPhysicallyPresent && !isDitebus;
+                  const isRelokasi = item.status === 'RELOKASI_KELUAR';
+                  const isReleased = isDitebus || isRelokasi;
+                  const isTagOffline = !item.isPhysicallyPresent && !isReleased;
                   const isMisplaced = item.isPhysicallyPresent && item.physicalDrawerId !== (item.systemDrawerId || item.drawerId);
 
                   let badge = (
@@ -235,6 +238,13 @@ export default function InventoryPage() {
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-300">
                         <ArrowUpRight className="w-3 h-3 text-purple-600" />
                         <span>DITEBUS (KELUAR)</span>
+                      </span>
+                    );
+                  } else if (isRelokasi) {
+                    badge = (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-300">
+                        <ArrowUpRight className="w-3 h-3 text-indigo-600" />
+                        <span>RELOKASI (KELUAR)</span>
                       </span>
                     );
                   } else if (isTagOffline) {
@@ -279,7 +289,7 @@ export default function InventoryPage() {
                             <span>Detail & Histori</span>
                           </button>
 
-                          {!isSPI && !isDitebus && (
+                          {!isSPI && !isReleased && (
                             <>
                               <button
                                 type="button"

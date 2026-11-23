@@ -33,7 +33,8 @@ export default function DrawerInventoryTable() {
   const drawerItems = items.filter(
     (it) =>
       (it.systemDrawerId === selectedDrawer || it.drawerId === selectedDrawer) &&
-      it.status !== 'DITEBUS'
+      it.status !== 'DITEBUS' &&
+      it.status !== 'RELOKASI_KELUAR'
   );
 
   return (

@@ -81,6 +81,7 @@ export default function DrawerMatrix() {
             (it) =>
               (it.systemDrawerId === d.id || it.drawerId === d.id) &&
               it.status !== 'DITEBUS' &&
+              it.status !== 'RELOKASI_KELUAR' &&
               it.status !== 'RECONCILED_VIRT'
           );
 
