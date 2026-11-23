@@ -97,7 +97,7 @@ export default function DashboardView() {
   return (
     <div className="space-y-5">
       {/* Role Action & Context Guidance Banner */}
-      <div className="bg-gradient-to-r from-[#0f233a] via-[#162e4a] to-[#0f233a] rounded-2xl p-5 text-white shadow-md border border-[#234266] flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-linear-to-r from-[#0f233a] via-[#162e4a] to-[#0f233a] rounded-2xl p-5 text-white shadow-md border border-[#234266] flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-[#008ba3] text-white font-bold uppercase tracking-wider">

@@ -8,7 +8,7 @@ import {
   INITIAL_RFID_LOGS,
   INITIAL_ALERTS,
   INITIAL_KPI,
-} from '../constants/initialData';
+} from '../constants/initialData.js';
 
 export const useVaultStore = create(
   persist(

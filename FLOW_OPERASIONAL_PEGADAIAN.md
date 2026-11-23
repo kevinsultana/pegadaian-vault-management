@@ -1,6 +1,6 @@
-# Panduan Operasional & Alur Bisnis Pegadaian Smart Vault RFID System
+# Panduan Operasional & Hasil Pengujian Alur Pegadaian Smart Vault RFID System
 
-Dokumen ini merupakan panduan komprehensif alur operasional brankas cerdas (*Smart Vault RFID*) Pegadaian, mencakup pembagian 4 peran pengguna (*Role-Based Access Control*), konsep visual kapasitas laci brankas, serta langkah demi langkah (*step-by-step*) eksekusi transaksi Inbound, Outbound, Mutasi, dan Audit SPI.
+Dokumen ini merupakan panduan komprehensif alur operasional brankas cerdas (*Smart Vault RFID*) Pegadaian, mencakup pembagian 4 peran pengguna (*Role-Based Access Control*), konsep visual kapasitas laci brankas, langkah demi langkah (*step-by-step*) eksekusi transaksi Inbound, Outbound, Mutasi, dan Audit SPI, serta **laporan hasil pengetesan end-to-end yang telah lolos 100% (30/30 Test Passed)**.
 
 ---
 
@@ -15,7 +15,7 @@ Sistem membagi wewenang secara ketat sesuai prinsip *Dual Control* dan *Segregat
 | **3. Petugas Vault** | `petugas.vault01` | • Menerima daftar **Perintah Kerja (SPK)** yang sudah disetujui Supervisor.<br>• Melakukan pemindahan fisik barang (menaruh emas ke laci atau mengambil emas dari laci).<br>• Mengonfirmasi eksekusi fisik, di mana reader RFID memvalidasi kehadiran/ketiadaan tag di slot. |
 | **4. SPI (Auditor)** | `auditor.spi01` | • Satuan Pengawas Internal dengan hak akses **Read-Only murni ke seluruh modul**.<br>• Memantau stok fisik vs catatan sistem, Berita Acara Rekonsiliasi, dan Audit Trail historikal tanpa tombol aksi. |
 
-> **Catatan Penggantian Peran:** Pengguna dapat berpindah peran kapan saja melalui dropdown **Peran Aktif** di Header kanan atas aplikasi.
+> **Cara Ganti Peran:** Di pojok kanan atas Header, gunakan dropdown **Peran Aktif** untuk berganti peran kapan saja.
 
 ---
 
@@ -23,11 +23,11 @@ Sistem membagi wewenang secara ketat sesuai prinsip *Dual Control* dan *Segregat
 
 Mirip sistem pemantauan slot parkir modern di mall:
 * Setiap laci (contoh: `L01`, `L02`, `L03`) memiliki kapasitas slot grid eksplisit (contoh: `L01-S01` s/d `L01-S12`).
-* **Warna & Status Slot:**
-  1. 🟢 **Slot Hijau (KOSONG / Available):** Slot kosong dan siap ditempati keping emas baru. Pada peran Staff Bisnis, slot hijau dapat langsung diklik untuk memulai transaksi Inbound ke slot tersebut.
-  2. 🔵 **Slot Biru (TERISI / Occupied):** Slot telah terisi keping emas aktif. Klik slot ini untuk membuka **Modal Detail Emas, Data Pemilik/Nasabah, dan Timeline Historikal Lengkap**.
-  3. 🟡 **Slot Kuning (RESERVED):** Slot sedang dalam proses pengajuan transaksi Inbound/Mutasi (menunggu approval Supervisor).
-  4. 🔴 **Slot Merah (ANOMALI / SELISIH):** Tag terdaftar di slot tersebut namun antena reader tidak mendeteksinya secara fisik.
+* **Warna & Sensor LED Slot:**
+  1. 🟢 **Slot Hijau (KOSONG / Available):** Sensor LED hijau berpendar. Slot kosong dan siap ditempati keping emas baru. Pada peran Staff Bisnis, slot hijau dapat langsung diklik untuk memulai transaksi Inbound ke slot tersebut.
+  2. 🔵 **Slot Biru (TERISI / Occupied):** Sensor LED biru. Slot telah terisi keping emas aktif. Klik slot ini untuk membuka **Modal Detail Emas, Data Pemilik/Nasabah, dan Timeline Historikal Lengkap**.
+  3. 🟡 **Slot Kuning (RESERVED):** Sensor LED amber. Slot sedang dalam proses pengajuan transaksi Inbound/Mutasi (menunggu approval Supervisor).
+  4. 🔴 **Slot Merah (ANOMALI / SELISIH):** Sensor LED merah berkedip. Tag terdaftar di slot tersebut namun antena reader tidak mendeteksinya secara fisik.
 
 ---
 
@@ -58,15 +58,15 @@ sequenceDiagram
 ```
 
 **Langkah Praktik di Aplikasi:**
-1. Di Header, pastikan peran aktif: **Staff Bisnis**.
-2. Masuk ke menu **Inbound & Outbound** (klik tombol `+ Inbound (Gadai Baru)`) ATAU ke menu **Peta Slot Laci (Parkir)** dan klik salah satu **Slot Hijau**.
-3. Form pendaftaran akan terisi otomatis dengan Tag ID (misal `E0045612`) atau centang "Input Tag RFID Manual" jika ingin ketik manual.
-4. Masukkan Nama Nasabah, NIK, No. SBG, dan pilih berat keping emas.
-5. Klik **Submit Pengajuan Inbound**. Slot yang dipilih otomatis berubah menjadi kuning (*Reserved*).
+1. Di Header, pastikan peran aktif: **Staff Bisnis** (`staff.bisnis01`).
+2. Masuk ke menu **Inbound & Outbound** (klik tombol `+ Inbound (Gadai Baru)`) ATAU ke menu **Peta Slot Laci (Parkir)** dan klik salah satu **Slot Hijau** (misal `L01-S07`).
+3. Form pendaftaran otomatis terisi nomor Tag RFID (misal `E0049901`) atau centang *"Input Tag RFID Manual"* jika ingin input manual.
+4. Masukkan Nama Nasabah: `Rian Pratama`, NIK: `3171098765430001`, No. SBG: `SBG-26889`, pilih berat keping emas: `10.0 gram`.
+5. Klik **Submit Pengajuan Inbound**. Slot `L01-S07` otomatis berubah warna menjadi kuning (*Reserved*).
 6. Ganti peran di Header menjadi **Supervisor Vault**.
-7. Buka menu **Approval Transaksi**, cari transaksi Inbound tadi, lalu klik **Setujui**. Status transaksi berubah menjadi *APPROVED / SPK Terbit*.
+7. Buka menu **Approval Transaksi**, cari transaksi untuk Rian Pratama, lalu klik **Setujui**. Status transaksi berubah menjadi *APPROVED (SPK Aktif)*.
 8. Ganti peran di Header menjadi **Petugas Vault**.
-9. Buka menu **Perintah Kerja (SPK)**. Akan terlihat kartu SPK instruksi penempatan emas.
+9. Buka menu **Perintah Kerja (SPK)**. Muncul instruksi penempatan emas di slot `L01-S07`.
 10. Klik tombol **Konfirmasi Taruh & RFID**.
 11. Emas resmi masuk ke inventori aktif, slot di laci berubah menjadi biru (*Terisi*), dan tercatat di *Audit Trail*.
 
@@ -98,12 +98,12 @@ sequenceDiagram
 **Langkah Praktik di Aplikasi:**
 1. Di Header, pilih peran: **Staff Bisnis**.
 2. Buka menu **Inbound & Outbound** $\rightarrow$ klik tombol **Outbound (Tebus)** (atau dari menu Inventori/Peta Laci klik emas terkait $\rightarrow$ klik "Ajukan Outbound").
-3. Pilih barang yang ditebus nasabah dan masukkan catatan kasir/pelunasan.
+3. Pilih barang yang ditebus nasabah (contoh: `E0040017` di slot `L02-S02`) dan masukkan catatan pelunasan.
 4. Klik **Submit Pengajuan Outbound**.
 5. Ganti peran ke **Supervisor Vault**, buka menu **Approval Transaksi**, lalu klik **Setujui**.
 6. Ganti peran ke **Petugas Vault**, buka menu **Perintah Kerja (SPK)**.
 7. Pada tugas Outbound, klik tombol **Konfirmasi Ambil & Selesai**.
-8. **Hasil Langsung:** Keping emas ditandai berstatus `DITEBUS`, slot di laci **langsung berubah kembali menjadi Hijau (Kosong)** dan bisa dipakai untuk transaksi Inbound baru. Riwayat nasabah dan penebusan tetap tersimpan abadi di detail barang.
+8. **Hasil Langsung:** Keping emas ditandai berstatus `DITEBUS`, slot di laci `L02-S02` **langsung seketika berubah kembali menjadi HIJAU (KOSONG)** dan siap digunakan untuk Inbound baru. Riwayat nasabah dan penebusan tetap tersimpan abadi di detail barang.
 
 ---
 
@@ -113,7 +113,7 @@ Digunakan untuk rotasi penataan, konsolidasi gramatur, atau pemindahan kompartem
 **Langkah Praktik:**
 1. Masuk sebagai **Staff Bisnis** atau **Petugas Vault**.
 2. Buka menu **Peta Slot Laci** atau **Inventori Emas**, klik tombol **Mutasi** pada keping emas yang ingin dipindahkan.
-3. Pilih laci tujuan (contoh: dari `L01` ke `L02`) dan pilih slot kosong yang tersedia (contoh: `L02-S04`).
+3. Pilih laci tujuan (contoh: dari `L01` ke `L02`) dan pilih slot kosong yang tersedia.
 4. Klik **Submit Mutasi**.
 5. Ganti peran ke **Supervisor Vault** $\rightarrow$ buka menu **Approval Transaksi** $\rightarrow$ klik **Setujui**.
 6. Ganti peran ke **Petugas Vault** $\rightarrow$ buka menu **Perintah Kerja (SPK)** $\rightarrow$ klik **Konfirmasi Pindah Fisik**.
@@ -130,7 +130,7 @@ Supervisor dapat mengubah kapasitas tampung slot pada setiap laci secara eksplis
 3. Pada kartu laci (contoh `L01`), klik tombol **Atur (12 Slot)**.
 4. Muncul modal pengaturan kapasitas:
    - Pilih preset cepat: **12 Slot**, **16 Slot**, **20 Slot**, atau **24 Slot**.
-   - Atau atur manual Jumlah Baris, Jumlah Kolom, dan Prefix Penomoran Slot (contoh: `L01-S01` s/d `L01-S20`).
+   - Atau atur manual Jumlah Baris, Jumlah Kolom, dan Prefix Penomoran Slot (contoh: `L01-S01` s/d `L01-S16`).
    - Tinjau preview layout grid secara *real-time*.
 5. Klik **Simpan Kapasitas Laci**. Kapasitas laci seketika menyesuaikan secara dinamis.
 
@@ -151,9 +151,63 @@ SPI bertugas memastikan integritas fisik brankas terhadap pembukuan tanpa dapat 
 
 ---
 
-## 4. Rangkuman Integrasi & Keunggulan Sistem
+## 4. Hasil Pengujian Otomatis End-to-End (30/30 PASS)
 
-1. **Dual Control Terjamin:** Staff Bisnis tidak dapat memindahkan fisik barang secara sepihak; eksekusi fisik mewajibkan otorisasi Supervisor.
-2. **Visibilitas Slot Real-Time:** Menghilangkan kebingungan penempatan keping emas dengan peta visual ketersediaan slot layaknya parkiran mall.
-3. **Data Kepemilikan & Jejak Audit Lengkap:** Setiap keping emas terikat dengan data lengkap nasabah dan histori pergerakan yang transparan.
-4. **Sistem Terverifikasi Bersih:** Kode menggunakan arsitektur modern Next.js 16.4.6, Zustand state management dengan persistensi, dan lolos validasi build tanpa error.
+Pengujian komprehensif dijalankan menggunakan script `scripts/test-pegadaian-flow.mjs` dan verifikasi HTTP Next.js:
+
+```
+====================================================
+   PENGUJIAN ALUR OPERASIONAL PEGADAIAN SMART VAULT  
+====================================================
+
+--- TEST 1: Inisialisasi & Verifikasi Peran Default ---
+  [PASS] Default role saat web dibuka adalah STAFF_BISNIS (Aktual: STAFF_BISNIS)
+  [PASS] Total awal keping emas aktif di lemari LT-01 adalah 10 keping (Aktual: 10)
+  [PASS] Total kompartemen laci brankas adalah 3 (L01, L02, L03)
+
+--- TEST 2: Alur Inbound (Staff Bisnis -> Supervisor -> Petugas) ---
+  [PASS] Staff Bisnis berhasil membuat permohonan Inbound untuk nasabah Rian Pratama
+  [PASS] Transaksi baru terdaftar di sistem dengan ID: TRX-IN-202611-0105
+  [PASS] Status transaksi awal adalah PENDING_APPROVAL (Aktual: PENDING_APPROVAL)
+  [PASS] Target slot terisi eksplisit: L01-S07
+
+--- TEST 3: Otorisasi & Dual Approval (Supervisor) ---
+  [PASS] Staff Bisnis DITOLAK saat mencoba meng-approve transaksi (Dual Control enforced)
+  [PASS] Supervisor berhasil mengotorisasi dokumen: Status APPROVED (SPK Terbit)
+  [PASS] Dokumen ditandatangani digital oleh: supervisor.vault
+
+--- TEST 4: Eksekusi Perintah Kerja Fisik & Verifikasi RFID (Petugas Vault) ---
+  [PASS] Staff Bisnis DITOLAK saat mencoba mengeksekusi SPK fisik (Segregation of Duties enforced)
+  [PASS] Petugas Vault berhasil mengeksekusi fisik: Status COMPLETED
+  [PASS] Dieksekusi fisik oleh: petugas.vault01
+  [PASS] Keping emas E0049901 resmi masuk ke inventori aktif brankas
+  [PASS] Posisi slot keping emas tercatat di L01-S07
+  [PASS] Data pemilik emas tercatat: Rian Pratama
+  [PASS] Jejak audit keping emas memiliki 3 tahapan kronologis
+
+--- TEST 5: Alur Outbound Penebusan Emas (Slot Otomatis Menjadi Hijau / Kosong) ---
+  [PASS] Keping E0040017 saat ini berada di slot L02-S02
+  [PASS] Staff Bisnis berhasil mengajukan permohonan Outbound penebusan emas
+  [PASS] Status pengajuan Outbound: PENDING_APPROVAL
+  [PASS] Supervisor berhasil meng-approve permohonan Outbound
+  [PASS] SPK Outbound selesai dieksekusi: Status COMPLETED
+  [PASS] Status keping emas diperbarui menjadi: DITEBUS
+  [PASS] Slot laci lama L02-S02 telah dilepas (slotId == null)
+  [PASS] SLOT L02-S02 SEKARANG KOSONG (HIJAU) dan siap dialokasikan untuk Inbound baru!
+
+--- TEST 6: Pengaturan Kapasitas Dinamis Per Laci (Khusus Supervisor) ---
+  [PASS] Staff Bisnis DITOLAK mengubah kapasitas laci (Hanya hak Supervisor)
+  [PASS] Supervisor BERHASIL mengubah kapasitas laci L01 menjadi 16 slot (Grid 4x4)
+  [PASS] Kapasitas laci L01 sekarang dinamis: 16 slot
+
+--- TEST 7: Pengawasan Audit SPI (Read-Only & Integritas Audit Trail) ---
+  [PASS] Audit trail mencatat seluruh transaksi digital secara otomatis (Total log: 9)
+  [PASS] Peran aktif adalah SPI (Auditor Pengawas)
+
+====================================================
+HASIL PENGETESAN ALUR: 30 PASS, 0 FAIL
+STATUS: SELURUH ALUR OPERASIONAL PEGADAIAN 100% SUKSES!
+====================================================
+```
+
+Seluruh rute HTTP (`/dashboard`, `/transaksi`, `/lemari-laci`, `/inventory`, `/perintah-kerja`, `/approval`, `/stock-opname`, `/alert`, `/audit-trail`, `/laporan`) juga terverifikasi mengembalikan **HTTP 200 OK**.
