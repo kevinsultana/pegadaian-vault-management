@@ -2,9 +2,11 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import {
   INITIAL_ITEMS,
+  INITIAL_DRAWERS,
+  INITIAL_TRANSACTIONS,
+  INITIAL_TRANSFERS,
   INITIAL_RFID_LOGS,
   INITIAL_ALERTS,
-  INITIAL_TRANSFERS,
   INITIAL_KPI,
 } from '../constants/initialData';
 
@@ -12,23 +14,22 @@ export const useVaultStore = create(
   persist(
     (set, get) => ({
       // Active View Routing
-      activeView: 'dashboard', // 'dashboard' | 'lemari-laci' | 'inventory' | 'stock-opname' | 'approval' | 'alert' | 'audit-trail' | 'laporan'
+      activeView: 'dashboard',
       setActiveView: (view) => set({ activeView: view }),
 
-      // RBAC Role: 'PETUGAS' | 'SUPERVISOR' | 'SPI'
-      currentRole: 'PETUGAS',
+      // -------------------------------------------------------------
+      // RBAC: 'STAFF_BISNIS' (Default) | 'SUPERVISOR' | 'PETUGAS' | 'SPI'
+      // -------------------------------------------------------------
+      currentRole: 'STAFF_BISNIS',
       setCurrentRole: (role) => {
         set({ currentRole: role });
-        get().addToast(
-          `Peran aktif beralih ke: ${
-            role === 'PETUGAS'
-              ? 'Petugas Vault'
-              : role === 'SUPERVISOR'
-              ? 'Supervisor Vault (Hak Approval Aktif)'
-              : 'SPI (Auditor Pengawas / Read-Only)'
-          }`,
-          'info'
-        );
+        const roleLabels = {
+          STAFF_BISNIS: 'Staff Bisnis (Handling Transaksi & Slot Laci)',
+          SUPERVISOR: 'Supervisor Vault (Otorisasi & Pengaturan Brankas)',
+          PETUGAS: 'Petugas Vault (Eksekusi Perintah Kerja Fisik)',
+          SPI: 'SPI (Auditor Pengawas / Read-Only Seluruh Sistem)',
+        };
+        get().addToast(`Peran aktif beralih ke: ${roleLabels[role] || role}`, 'info');
       },
 
       // Floating Toast Notifications
@@ -49,99 +50,101 @@ export const useVaultStore = create(
       },
 
       // -------------------------------------------------------------
-      // 1. DUAL-STATE DATA ENGINE
-      // - systemDrawerId: Lokasi resmi catatan buku/sistem (contoh: 'L01')
-      // - physicalDrawerId: Lokasi fisik aktual saat ini (tempat antena mendeteksi)
-      // - isPhysicallyPresent: Boolean (apakah tag fisiknya berada di dalam lemari atau di luar)
-      // - status: 'TERBACA' | 'MISPLACED' | 'MISSING' | 'RECONCILED_VIRT'
+      // DRAWERS & DINAMIS KAPASITAS
       // -------------------------------------------------------------
-      items: INITIAL_ITEMS.map((item) => ({
-        ...item,
-        systemDrawerId: item.drawerId, // catatan sistem
-        physicalDrawerId: item.drawerId, // deteksi antena fisik
-        isPhysicallyPresent: true, // ada di dalam lemari
-        drawerId: item.drawerId, // backward-compat accessor
-        status: 'TERBACA',
-      })),
-
+      drawers: INITIAL_DRAWERS,
       selectedDrawer: 'L01',
       setSelectedDrawer: (drawerId) => set({ selectedDrawer: drawerId }),
 
-      // Mode Interaksi Fisik (Sandbox toggle pada halaman Lemari & Laci)
-      physicalInteractionMode: false,
-      togglePhysicalInteractionMode: () =>
-        set((s) => ({ physicalInteractionMode: !s.physicalInteractionMode })),
+      updateDrawerCapacity: (drawerId, { totalCapacity, rows, cols, slotsPrefix }) => {
+        const role = get().currentRole;
+        if (role !== 'SUPERVISOR') {
+          get().addToast('Akses ditolak: Hanya Supervisor yang dapat mengubah kapasitas laci!', 'error');
+          return false;
+        }
 
-      // Core Collections
-      rfidLogs: INITIAL_RFID_LOGS,
+        const updatedDrawers = get().drawers.map((d) => {
+          if (d.id === drawerId) {
+            return {
+              ...d,
+              totalCapacity: Number(totalCapacity) || d.totalCapacity,
+              rows: Number(rows) || d.rows,
+              cols: Number(cols) || d.cols,
+              slotsPrefix: slotsPrefix || d.slotsPrefix,
+            };
+          }
+          return d;
+        });
+
+        get().addAuditTrail(
+          'KONFIGURASI_KAPASITAS_LACI',
+          `Supervisor memperbarui kapasitas ${drawerId} menjadi ${totalCapacity} slot (${rows}x${cols})`,
+          'BERHASIL'
+        );
+
+        set({ drawers: updatedDrawers, drawerCapacityModalOpen: false });
+        get().addToast(`Kapasitas laci ${drawerId} berhasil diubah ke ${totalCapacity} slot!`, 'success');
+        return true;
+      },
+
+      // -------------------------------------------------------------
+      // INVENTORI KEPING EMAS (ITEMS)
+      // -------------------------------------------------------------
+      items: INITIAL_ITEMS.map((item) => ({
+        ...item,
+        systemDrawerId: item.drawerId,
+        physicalDrawerId: item.drawerId,
+        isPhysicallyPresent: item.isPhysicallyPresent ?? true,
+        drawerId: item.drawerId,
+        slotId: item.slotId || `${item.drawerId}-S01`,
+        status: item.status || 'TERBACA',
+      })),
+
+      // -------------------------------------------------------------
+      // TRANSAKSI TERPADU (INBOUND, OUTBOUND, MUTASI)
+      // -------------------------------------------------------------
+      transactions: INITIAL_TRANSACTIONS,
+      transfers: INITIAL_TRANSFERS, // backward compat
       alerts: INITIAL_ALERTS,
-      transfers: INITIAL_TRANSFERS,
+      rfidLogs: INITIAL_RFID_LOGS,
       kpi: INITIAL_KPI,
       beritaAcaraList: [],
 
       // -------------------------------------------------------------
-      // 4. AUDIT TRAIL PERSISTENCE
-      // Format: { id, timestamp, action, actor, details, status }
+      // MODAL CONTROLLERS
       // -------------------------------------------------------------
-      auditTrails: [
-        {
-          id: 'AUD-001',
-          timestamp: '20/10/2026 09:45:01',
-          action: 'SIKLUS_BACA_RFID',
-          actor: 'system:reader-mars4at',
-          details: 'Pindai otomatis lemari LT-01: 39 tag terbaca normal (0 selisih)',
-          status: 'BERHASIL',
-        },
-        {
-          id: 'AUD-002',
-          timestamp: '20/10/2026 10:00:01',
-          action: 'SIKLUS_BACA_RFID',
-          actor: 'system:reader-mars4at',
-          details: 'Pindai otomatis lemari LT-01: 39 tag terbaca normal (0 selisih)',
-          status: 'BERHASIL',
-        },
-        {
-          id: 'AUD-003',
-          timestamp: '20/10/2026 10:14:56',
-          action: 'VERIFIKASI_LACI',
-          actor: 'system:reader-mars4at',
-          details: 'Laci L01 terbaca 5 tag cocok dengan sistem',
-          status: 'BERHASIL',
-        },
-      ],
+      inboundModalOpen: false,
+      preselectedInboundSlot: null,
+      setInboundModalOpen: (open, preselectedSlot = null) =>
+        set({ inboundModalOpen: open, preselectedInboundSlot: preselectedSlot }),
 
-      addAuditTrail: (action, details, status = 'BERHASIL') => {
-        const timestamp = new Date().toLocaleString('id-ID', {
-          day: '2-digit', month: '2-digit', year: 'numeric',
-          hour: '2-digit', minute: '2-digit', second: '2-digit',
-        });
-        const id = `AUD-${Date.now().toString().slice(-5)}`;
-        const newEntry = {
-          id,
-          timestamp,
-          action,
-          actor: 'petugas:vault01',
-          details,
-          status,
-        };
-        set({ auditTrails: [newEntry, ...get().auditTrails].slice(0, 50) });
-      },
+      outboundModalOpen: false,
+      outboundTargetItem: null,
+      setOutboundModalOpen: (open, item = null) =>
+        set({ outboundModalOpen: open, outboundTargetItem: item }),
 
-      // Reader & Scan Hardware Status
-      readerStatus: 'ONLINE',
-      readDuration: '± 4 detik',
-      lastScanTime: '10:15:02',
-      isScanning: false,
-      autoScan: false,
+      transferModalOpen: false,
+      transferTargetItem: null,
+      setTransferModalOpen: (open, item = null) =>
+        set({ transferModalOpen: open, transferTargetItem: item }),
 
-      // Modal Dialog States
+      itemDetailModalOpen: false,
+      selectedItemDetail: null,
+      openItemDetail: (item) =>
+        set({ itemDetailModalOpen: true, selectedItemDetail: item }),
+      closeItemDetail: () =>
+        set({ itemDetailModalOpen: false, selectedItemDetail: null }),
+
+      drawerCapacityModalOpen: false,
+      selectedDrawerForCapacity: null,
+      openDrawerCapacityModal: (drawerId) =>
+        set({ drawerCapacityModalOpen: true, selectedDrawerForCapacity: drawerId }),
+      closeDrawerCapacityModal: () =>
+        set({ drawerCapacityModalOpen: false, selectedDrawerForCapacity: null }),
+
       classificationModalOpen: false,
       selectedClassificationType: null,
       selectedAlertItem: null,
-      beritaAcaraModalOpen: false,
-      transferModalOpen: false,
-      transferTargetItem: null,
-
       setClassificationModalOpen: (open, type = null, item = null) =>
         set({
           classificationModalOpen: open,
@@ -149,423 +152,342 @@ export const useVaultStore = create(
           selectedAlertItem: item || get().selectedAlertItem,
         }),
 
+      beritaAcaraModalOpen: false,
       setBeritaAcaraModalOpen: (open) => set({ beritaAcaraModalOpen: open }),
 
-      setTransferModalOpen: (open, item = null) =>
-        set({ transferModalOpen: open, transferTargetItem: item }),
-
       // -------------------------------------------------------------
-      // 2. REKONSILIASI OTOMATIS: runScanCycle()
-      // Membandingkan systemDrawerId vs physicalDrawerId & isPhysicallyPresent
+      // TRANSAKSI ACTION: CREATE INBOUND
       // -------------------------------------------------------------
-      runScanCycle: () => {
-        set({ isScanning: true });
+      createInboundTransaction: (payload) => {
+        const {
+          tagId,
+          brand,
+          weight,
+          purity,
+          sbg,
+          customer,
+          targetDrawerId,
+          targetSlotId,
+          reason,
+        } = payload;
 
-        const timeStr = new Date().toLocaleTimeString('id-ID', {
-          hour: '2-digit', minute: '2-digit', second: '2-digit',
-        });
-        const currentItems = [...get().items];
-        const currentTransfers = [...get().transfers];
-        const currentAlerts = [...get().alerts];
-        const newLogs = [];
-
-        let totalRead = 0;
-        let totalSelisih = 0;
-
-        const updatedItems = currentItems.map((item) => {
-          // Kasus (d): Selisih / Missing
-          // Item memiliki systemDrawerId, tetapi isPhysicallyPresent == false tanpa transaksi outbound
-          if (!item.isPhysicallyPresent) {
-            totalSelisih++;
-
-            const existingAlert = currentAlerts.find(
-              (a) => a.itemId === item.id && a.type === 'SELISIH' && a.status === 'OPEN'
-            );
-
-            if (!existingAlert) {
-              const alertId = `ALT-${Date.now().toString().slice(-4)}`;
-              currentAlerts.unshift({
-                id: alertId,
-                type: 'SELISIH',
-                title: `LT-01/${item.systemDrawerId} · ${item.id} tidak terbaca · ${timeStr.slice(0, 5)}`,
-                timestamp: timeStr,
-                cabinet: 'LT-01',
-                drawer: item.systemDrawerId,
-                itemId: item.id,
-                itemBrand: item.brand,
-                status: 'OPEN',
-                recipient: 'supervisor.vault & SPI',
-              });
-
-              newLogs.unshift({
-                id: `scan-alert-${Date.now()}-${item.id}`,
-                time: timeStr,
-                title: 'Alert selisih dibuat',
-                detail: `LT-01/${item.systemDrawerId} · ${item.id} tidak terbaca tanpa mutasi outbound`,
-                type: 'alert',
-                color: 'red',
-              });
-
-              get().addAuditTrail(
-                'ALERT_SELISIH_TERDETEKSI',
-                `Item ${item.id} (${item.brand}) di ${item.systemDrawerId} tidak terbaca oleh antena reader`,
-                'PERINGATAN'
-              );
-            }
-
-            return {
-              ...item,
-              status: 'MISSING',
-            };
-          }
-
-          // Kasus (b) & (c): Posisi fisik berbeda dari catatan sistem
-          if (item.physicalDrawerId !== item.systemDrawerId) {
-            // Cek apakah ada dokumen transfer APPROVED untuk item ini ke laci fisik tujuan
-            const matchingApprovedTrf = currentTransfers.find(
-              (t) =>
-                t.tagId === item.id &&
-                t.targetDrawerId === item.physicalDrawerId &&
-                (t.status === 'APPROVED' || t.status === 'VERIFIED')
-            );
-
-            // Kasus (b): Transfer Sah (Approved)
-            if (matchingApprovedTrf) {
-              matchingApprovedTrf.status = 'VERIFIED';
-              matchingApprovedTrf.detectTime = timeStr;
-
-              newLogs.unshift({
-                id: `scan-verif-${Date.now()}-${item.id}`,
-                time: timeStr,
-                title: 'Lokasi terverifikasi',
-                detail: `${item.id} · ${item.physicalDrawerId} · cocok ${matchingApprovedTrf.id}`,
-                type: 'verified',
-                color: 'green',
-              });
-              newLogs.unshift({
-                id: `scan-in-${Date.now()}-${item.id}`,
-                time: timeStr,
-                title: `Tag masuk ${item.physicalDrawerId}`,
-                detail: `${item.id} · ${item.systemDrawerId} → ${item.physicalDrawerId}`,
-                type: 'in',
-                color: 'blue',
-              });
-              newLogs.unshift({
-                id: `scan-out-${Date.now()}-${item.id}`,
-                time: timeStr,
-                title: `Tag keluar ${item.systemDrawerId}`,
-                detail: `${item.id} · Pindah dengan dokumen ${matchingApprovedTrf.id}`,
-                type: 'out',
-                color: 'blue',
-              });
-
-              get().addAuditTrail(
-                'MUTASI_DIVERIFIKASI_RFID',
-                `Transfer ${matchingApprovedTrf.id}: ${item.id} resmi diperbarui ke ${item.physicalDrawerId}`,
-                'BERHASIL'
-              );
-
-              totalRead++;
-              return {
-                ...item,
-                systemDrawerId: item.physicalDrawerId, // Sistem otomatis memperbarui systemDrawerId
-                drawerId: item.physicalDrawerId,
-                status: 'TERBACA',
-                lastTransferred: {
-                  from: item.systemDrawerId,
-                  to: item.physicalDrawerId,
-                  transferId: matchingApprovedTrf.id,
-                },
-              };
-            } else {
-              // Kasus (c): Misplaced (Pindah Tanpa Dokumen Approved)
-              const existingMisplacedAlert = currentAlerts.find(
-                (a) => a.itemId === item.id && a.type === 'MISPLACED' && a.status === 'OPEN'
-              );
-
-              if (!existingMisplacedAlert) {
-                currentAlerts.unshift({
-                  id: `ALT-MSP-${Date.now().toString().slice(-4)}`,
-                  type: 'MISPLACED',
-                  title: `LT-01/${item.physicalDrawerId} · ${item.id} berpindah tanpa dokumen transfer`,
-                  timestamp: timeStr,
-                  cabinet: 'LT-01',
-                  drawer: item.physicalDrawerId,
-                  itemId: item.id,
-                  itemBrand: item.brand,
-                  status: 'OPEN',
-                  recipient: 'supervisor.vault',
-                });
-
-                newLogs.unshift({
-                  id: `scan-msp-${Date.now()}-${item.id}`,
-                  time: timeStr,
-                  title: 'Alert MISPLACED dibuat',
-                  detail: `${item.id} terdeteksi di ${item.physicalDrawerId} tanpa dokumen approved`,
-                  type: 'alert',
-                  color: 'orange',
-                });
-
-                get().addAuditTrail(
-                  'ALERT_MISPLACED',
-                  `Item ${item.id} (${item.brand}) terdeteksi di laci ${item.physicalDrawerId} tanpa dokumen approved`,
-                  'PERINGATAN'
-                );
-              }
-
-              totalRead++;
-              return {
-                ...item,
-                status: 'MISPLACED',
-              };
-            }
-          }
-
-          // Kasus (a): Normal
-          // physicalDrawerId == systemDrawerId dan isPhysicallyPresent == true
-          totalRead++;
-          return {
-            ...item,
-            status: 'TERBACA',
-          };
-        });
-
-        // Log penyelesaian siklus
-        newLogs.unshift({
-          id: `scan-done-${Date.now()}`,
-          time: timeStr,
-          title: 'Siklus baca selesai',
-          detail: `LT-01 · 3 laci · ${totalRead} tag terbaca · ${totalSelisih} selisih`,
-          type: totalSelisih > 0 ? 'cycle-selisih' : 'cycle-done',
-          color: totalSelisih > 0 ? 'orange' : 'green',
-        });
-
-        // Update KPI
-        const totalItemsCount = currentItems.length;
-        const accuracyNum = totalItemsCount > 0 ? ((totalRead / totalItemsCount) * 100).toFixed(1) : '100.0';
-        const newKpi = {
-          ...get().kpi,
-          totalVaultItems: totalItemsCount,
-          readLastCycle: totalRead,
-          openDifference: totalSelisih,
-          accuracy: `${accuracyNum}%`,
-        };
-
-        set({
-          items: updatedItems,
-          transfers: currentTransfers,
-          alerts: currentAlerts,
-          rfidLogs: [...newLogs, ...get().rfidLogs].slice(0, 30),
-          lastScanTime: timeStr,
-          isScanning: false,
-          kpi: newKpi,
-        });
-
-        if (totalSelisih > 0) {
-          get().addToast(`Siklus pindai RFID selesai: Terdeteksi ${totalSelisih} selisih fisik!`, 'error');
-        } else {
-          get().addToast(`Siklus pindai RFID selesai: ${totalRead} tag terbaca 100% normal`, 'success');
+        // Check if slot already taken by active item
+        const existingItemInSlot = get().items.find(
+          (i) => i.slotId === targetSlotId && i.status !== 'DITEBUS' && i.status !== 'RECONCILED_VIRT'
+        );
+        if (existingItemInSlot) {
+          get().addToast(`Slot ${targetSlotId} sudah terisi oleh ${existingItemInSlot.brand} (${existingItemInSlot.id})!`, 'error');
+          return false;
         }
-      },
 
-      // Alias for backward compat
-      runRfidScan: () => get().runScanCycle(),
-
-      // -------------------------------------------------------------
-      // 3. SANDBOX DRAWER INTERACTION (Physical Mover & Visibility Toggle)
-      // -------------------------------------------------------------
-      // Memindahkan fisik item dari satu laci ke laci lain
-      movePhysicalItem: (itemId, targetDrawerId) => {
-        const item = get().items.find((i) => i.id === itemId);
-        const prevDrawer = item?.physicalDrawerId || item?.systemDrawerId;
-
-        const updatedItems = get().items.map((it) =>
-          it.id === itemId
-            ? { ...it, physicalDrawerId: targetDrawerId, isPhysicallyPresent: true }
-            : it
+        // Check if slot is already reserved by pending transaction
+        const pendingInSlot = get().transactions.find(
+          (t) =>
+            t.targetSlotId === targetSlotId &&
+            (t.status === 'PENDING_APPROVAL' || t.status === 'APPROVED')
         );
-
-        get().addAuditTrail(
-          'PEMINDAHAN_FISIK_ITEM',
-          `Petugas memindahkan fisik tag ${itemId} dari ${prevDrawer} ke ${targetDrawerId} (Sandbox)`,
-          'INFO'
-        );
-
-        get().addToast(`Fisik ${itemId} dipindahkan ke laci ${targetDrawerId} (Sandbox)`, 'info');
-
-        set({ items: updatedItems });
-      },
-
-      // Toggle fisik item: Ada di laci vs Dikeluarkan / Disembunyikan (simulasi pencurian/kehilangan fisik)
-      togglePhysicalPresence: (itemId) => {
-        const item = get().items.find((i) => i.id === itemId);
-        if (!item) return;
-
-        const nextState = !item.isPhysicallyPresent;
-        const updatedItems = get().items.map((it) =>
-          it.id === itemId ? { ...it, isPhysicallyPresent: nextState } : it
-        );
-
-        get().addAuditTrail(
-          nextState ? 'KEMBALIKAN_FISIK_ITEM' : 'SEMBUNYIKAN_FISIK_ITEM',
-          nextState
-            ? `Item ${itemId} dimasukkan kembali ke laci fisik ${item.physicalDrawerId}`
-            : `Item ${itemId} diambil dari laci fisik ${item.physicalDrawerId} tanpa dokumen`,
-          nextState ? 'INFO' : 'PERINGATAN'
-        );
-
-        get().addToast(
-          nextState
-            ? `Tag ${itemId} dikembalikan ke laci fisik`
-            : `Tag ${itemId} diambil dari laci fisik (Simulasi Hilang)`,
-          nextState ? 'info' : 'warning'
-        );
-
-        set({ items: updatedItems });
-      },
-
-      removePhysicalItem: (itemId) => {
-        const updatedItems = get().items.map((it) =>
-          it.id === itemId ? { ...it, isPhysicallyPresent: false } : it
-        );
-        set({ items: updatedItems });
-      },
-
-      restorePhysicalItem: (itemId, originalDrawerId) => {
-        const updatedItems = get().items.map((it) =>
-          it.id === itemId
-            ? {
-                ...it,
-                physicalDrawerId: originalDrawerId || it.systemDrawerId,
-                isPhysicallyPresent: true,
-              }
-            : it
-        );
-        set({ items: updatedItems });
-      },
-
-      // -------------------------------------------------------------
-      // OPERASIONAL: REQUEST TRANSFER
-      // -------------------------------------------------------------
-      requestTransfer: (itemId, targetDrawer, reason = 'Rotasi penataan laci operasional') => {
-        const item = get().items.find((i) => i.id === itemId);
-        if (!item) return;
+        if (pendingInSlot) {
+          get().addToast(`Slot ${targetSlotId} sudah direservasi untuk transaksi ${pendingInSlot.id}!`, 'error');
+          return false;
+        }
 
         const date = new Date();
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
-        const count = String(get().transfers.length + 42).padStart(4, '0');
-        const transferNumber = `TRF-${year}-${month}-${count}`;
-        const timeStr = date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const count = String(get().transactions.length + 101).padStart(4, '0');
+        const trxId = `TRX-IN-${year}${month}-${count}`;
+        const timeStr = date.toLocaleString('id-ID');
 
-        const newTransfer = {
-          id: transferNumber,
-          tagId: item.id,
-          itemDesc: `${item.brand} · ${item.purity} · ${item.sbg}`,
-          sourceDrawer: `1-S05-R01-${item.systemDrawerId}`,
-          targetDrawer: `1-S05-R01-${targetDrawer}`,
-          sourceDrawerId: item.systemDrawerId,
-          targetDrawerId: targetDrawer,
-          approvedBy: null,
-          requestedBy: 'petugas.vault01',
+        const newTrx = {
+          id: trxId,
+          type: 'INBOUND',
+          itemId: tagId,
+          itemBrand: brand,
+          weight: Number(weight) || 0,
+          purity: purity || '999.9',
+          sbg,
+          customerName: customer?.name || 'Nasabah Pegadaian',
+          customerPhone: customer?.phone || '-',
+          customerNik: customer?.nik || '-',
+          customerAddress: customer?.address || '-',
+          loanAmount: customer?.loanAmount || 'Rp 0',
+          loanType: customer?.loanType || 'KCA',
+          sourceDrawerId: null,
+          sourceSlotId: null,
+          targetDrawerId,
+          targetSlotId,
+          requestedBy: 'staff.bisnis01',
           requestTime: timeStr,
-          detectTime: null,
-          status: 'PENDING',
-          reason,
+          reason: reason || `Akad Gadai Baru ${sbg}`,
+          status: 'PENDING_APPROVAL',
+          approvedBy: null,
+          approvedTime: null,
+          executedBy: null,
+          executedTime: null,
         };
 
         const newLog = {
-          id: `trf-req-${Date.now()}`,
-          time: timeStr,
-          title: 'Pengajuan transfer laci',
-          detail: `${transferNumber} · ${item.id} (${item.systemDrawerId} → ${targetDrawer}) · ${newTransfer.requestedBy}`,
-          type: 'request',
+          id: `log-trx-${Date.now()}`,
+          time: new Date().toLocaleTimeString('id-ID'),
+          title: 'Pengajuan Inbound Baru',
+          detail: `${trxId} · ${tagId} (${brand}) · Target: ${targetSlotId} · Menunggu Supervisor`,
+          type: 'inbound',
           color: 'blue',
         };
 
         get().addAuditTrail(
-          'PENGAJUAN_TRANSFER',
-          `Pengajuan dokumen ${transferNumber}: ${item.id} dari ${item.systemDrawerId} ke ${targetDrawer}`,
+          'PENGAJUAN_INBOUND',
+          `Staff Bisnis mengajukan Inbound ${trxId}: ${tagId} (${brand}) ke ${targetSlotId}`,
           'PENDING'
         );
 
         set({
-          transfers: [newTransfer, ...get().transfers],
+          transactions: [newTrx, ...get().transactions],
+          rfidLogs: [newLog, ...get().rfidLogs],
+          inboundModalOpen: false,
+          preselectedInboundSlot: null,
+        });
+
+        get().addToast(`Pengajuan Inbound ${trxId} berhasil dibuat. Menunggu persetujuan Supervisor.`, 'success');
+        return true;
+      },
+
+      // -------------------------------------------------------------
+      // TRANSAKSI ACTION: CREATE OUTBOUND
+      // -------------------------------------------------------------
+      createOutboundTransaction: (payload) => {
+        const { itemId, reason, notes } = payload;
+        const item = get().items.find((i) => i.id === itemId);
+        if (!item) {
+          get().addToast('Barang tidak ditemukan di inventori!', 'error');
+          return false;
+        }
+
+        // Check if already in pending/approved outbound
+        const existingOutbound = get().transactions.find(
+          (t) =>
+            t.itemId === itemId &&
+            t.type === 'OUTBOUND' &&
+            (t.status === 'PENDING_APPROVAL' || t.status === 'APPROVED')
+        );
+        if (existingOutbound) {
+          get().addToast(`Barang ${itemId} sudah dalam proses pengeluaran (${existingOutbound.id})!`, 'warning');
+          return false;
+        }
+
+        const date = new Date();
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const count = String(get().transactions.length + 101).padStart(4, '0');
+        const trxId = `TRX-OUT-${year}${month}-${count}`;
+        const timeStr = date.toLocaleString('id-ID');
+
+        const newTrx = {
+          id: trxId,
+          type: 'OUTBOUND',
+          itemId: item.id,
+          itemBrand: item.brand,
+          weight: item.weight,
+          purity: item.purity,
+          sbg: item.sbg,
+          customerName: item.customer?.name || '-',
+          customerPhone: item.customer?.phone || '-',
+          sourceDrawerId: item.systemDrawerId || item.drawerId,
+          sourceSlotId: item.slotId,
+          targetDrawerId: null,
+          targetSlotId: null,
+          requestedBy: 'staff.bisnis01',
+          requestTime: timeStr,
+          reason: reason || 'Pelunasan Tebus Akad Gadai',
+          notes: notes || '-',
+          status: 'PENDING_APPROVAL',
+          approvedBy: null,
+          approvedTime: null,
+          executedBy: null,
+          executedTime: null,
+        };
+
+        const newLog = {
+          id: `log-trx-${Date.now()}`,
+          time: new Date().toLocaleTimeString('id-ID'),
+          title: 'Pengajuan Outbound (Tebus)',
+          detail: `${trxId} · ${item.id} (${item.brand}) dari ${item.slotId} · Menunggu Supervisor`,
+          type: 'outbound',
+          color: 'blue',
+        };
+
+        get().addAuditTrail(
+          'PENGAJUAN_OUTBOUND',
+          `Staff Bisnis mengajukan Outbound ${trxId}: ${item.id} (${item.brand}) untuk ditebus`,
+          'PENDING'
+        );
+
+        set({
+          transactions: [newTrx, ...get().transactions],
+          rfidLogs: [newLog, ...get().rfidLogs],
+          outboundModalOpen: false,
+          outboundTargetItem: null,
+        });
+
+        get().addToast(`Pengajuan Outbound ${trxId} berhasil dibuat. Menunggu persetujuan Supervisor.`, 'success');
+        return true;
+      },
+
+      // -------------------------------------------------------------
+      // TRANSAKSI ACTION: CREATE MUTASI (PINDAH LACI / SLOT)
+      // -------------------------------------------------------------
+      createMutasiTransaction: (payload) => {
+        const { itemId, targetDrawerId, targetSlotId, reason } = payload;
+        const item = get().items.find((i) => i.id === itemId);
+        if (!item) {
+          get().addToast('Barang tidak ditemukan!', 'error');
+          return false;
+        }
+
+        const date = new Date();
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const count = String(get().transactions.length + 101).padStart(4, '0');
+        const trxId = `TRX-MUT-${year}${month}-${count}`;
+        const timeStr = date.toLocaleString('id-ID');
+
+        const newTrx = {
+          id: trxId,
+          type: 'MUTASI',
+          itemId: item.id,
+          itemBrand: item.brand,
+          weight: item.weight,
+          purity: item.purity,
+          sbg: item.sbg,
+          customerName: item.customer?.name || '-',
+          customerPhone: item.customer?.phone || '-',
+          sourceDrawerId: item.systemDrawerId || item.drawerId,
+          sourceSlotId: item.slotId,
+          targetDrawerId,
+          targetSlotId,
+          requestedBy: get().currentRole === 'STAFF_BISNIS' ? 'staff.bisnis01' : 'petugas.vault01',
+          requestTime: timeStr,
+          reason: reason || 'Rotasi Penataan Slot Laci',
+          status: 'PENDING_APPROVAL',
+          approvedBy: null,
+          approvedTime: null,
+          executedBy: null,
+          executedTime: null,
+        };
+
+        const newLog = {
+          id: `log-trx-${Date.now()}`,
+          time: new Date().toLocaleTimeString('id-ID'),
+          title: 'Pengajuan Mutasi Lokasi',
+          detail: `${trxId} · ${item.id} (${item.slotId} → ${targetSlotId})`,
+          type: 'mutasi',
+          color: 'blue',
+        };
+
+        get().addAuditTrail(
+          'PENGAJUAN_MUTASI',
+          `Pengajuan mutasi ${trxId}: ${item.id} dari ${item.slotId} ke ${targetSlotId}`,
+          'PENDING'
+        );
+
+        set({
+          transactions: [newTrx, ...get().transactions],
           rfidLogs: [newLog, ...get().rfidLogs],
           transferModalOpen: false,
           transferTargetItem: null,
         });
 
-        get().addToast(`Pengajuan mutasi ${transferNumber} berhasil dibuat`, 'info');
+        get().addToast(`Pengajuan mutasi ${trxId} berhasil dibuat`, 'info');
+        return true;
       },
 
       // -------------------------------------------------------------
-      // OPERASIONAL: APPROVAL TRANSFER
+      // SUPERVISOR: APPROVE TRANSAKSI
       // -------------------------------------------------------------
-      approveTransfer: (transferId) => {
-        const timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      approveTransaction: (trxId) => {
+        if (get().currentRole !== 'SUPERVISOR') {
+          get().addToast('Hanya Supervisor yang memiliki hak otorisasi Approval!', 'error');
+          return;
+        }
 
-        let approvedTransfer = null;
-        const updatedTransfers = get().transfers.map((trf) => {
-          if (trf.id === transferId) {
-            approvedTransfer = {
-              ...trf,
+        const timeStr = new Date().toLocaleString('id-ID');
+        let approvedItem = null;
+
+        const updated = get().transactions.map((trx) => {
+          if (trx.id === trxId) {
+            approvedItem = {
+              ...trx,
               status: 'APPROVED',
               approvedBy: 'supervisor.vault',
               approvedTime: timeStr,
             };
-            return approvedTransfer;
+            return approvedItem;
           }
-          return trf;
+          return trx;
         });
 
-        if (!approvedTransfer) return;
-
-        const newLog = {
-          id: `trf-app-${Date.now()}`,
-          time: timeStr,
-          title: 'Transfer disetujui',
-          detail: `${approvedTransfer.id} · ${approvedTransfer.approvedBy} · Siap dipindahkan fisik`,
-          type: 'approval',
-          color: 'blue',
-        };
+        if (!approvedItem) return;
 
         get().addAuditTrail(
-          'PERSETUJUAN_MUTASI',
-          `Dokumen ${approvedTransfer.id} disetujui oleh supervisor.vault untuk tag ${approvedTransfer.tagId}`,
+          'PERSETUJUAN_TRANSAKSI',
+          `Dokumen ${trxId} (${approvedItem.type}) disetujui Supervisor. Perintah Kerja diterbitkan untuk Petugas.`,
           'BERHASIL'
         );
 
         set({
-          transfers: updatedTransfers,
-          rfidLogs: [newLog, ...get().rfidLogs],
+          transactions: updated,
+          rfidLogs: [
+            {
+              id: `app-${Date.now()}`,
+              time: new Date().toLocaleTimeString('id-ID'),
+              title: `Transaksi Disetujui (${approvedItem.type})`,
+              detail: `${trxId} · Disetujui supervisor.vault · SPK diterbitkan ke Petugas`,
+              type: 'approval',
+              color: 'green',
+            },
+            ...get().rfidLogs,
+          ],
         });
 
-        get().addToast(`Dokumen ${approvedTransfer.id} disetujui oleh Supervisor Vault`, 'success');
+        get().addToast(`Dokumen ${trxId} disetujui. Perintah Kerja otomatis masuk ke antrean Petugas Vault!`, 'success');
       },
 
-      rejectTransfer: (transferId) => {
-        const timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        const updatedTransfers = get().transfers.map((trf) =>
-          trf.id === transferId
-            ? { ...trf, status: 'REJECTED', approvedBy: 'supervisor.vault', approvedTime: timeStr }
-            : trf
+      // -------------------------------------------------------------
+      // SUPERVISOR: REJECT TRANSAKSI
+      // -------------------------------------------------------------
+      rejectTransaction: (trxId, rejectionReason = 'Ditolak oleh Supervisor') => {
+        if (get().currentRole !== 'SUPERVISOR') {
+          get().addToast('Hanya Supervisor yang memiliki hak menolak!', 'error');
+          return;
+        }
+
+        const timeStr = new Date().toLocaleString('id-ID');
+        const updated = get().transactions.map((trx) =>
+          trx.id === trxId
+            ? {
+                ...trx,
+                status: 'REJECTED',
+                approvedBy: 'supervisor.vault',
+                approvedTime: timeStr,
+                rejectionReason,
+              }
+            : trx
         );
 
         get().addAuditTrail(
-          'PENOLAKAN_MUTASI',
-          `Dokumen transfer ${transferId} ditolak oleh supervisor.vault`,
+          'PENOLAKAN_TRANSAKSI',
+          `Dokumen ${trxId} ditolak Supervisor. Alasan: ${rejectionReason}`,
           'DITOLAK'
         );
 
         set({
-          transfers: updatedTransfers,
+          transactions: updated,
           rfidLogs: [
             {
-              id: `trf-rej-${Date.now()}`,
-              time: timeStr,
-              title: 'Transfer ditolak',
-              detail: `${transferId} · Ditolak oleh supervisor.vault`,
+              id: `rej-${Date.now()}`,
+              time: new Date().toLocaleTimeString('id-ID'),
+              title: 'Transaksi Ditolak',
+              detail: `${trxId} · Ditolak supervisor.vault: ${rejectionReason}`,
               type: 'reject',
               color: 'red',
             },
@@ -573,208 +495,331 @@ export const useVaultStore = create(
           ],
         });
 
-        get().addToast(`Dokumen ${transferId} ditolak oleh Supervisor Vault`, 'warning');
+        get().addToast(`Dokumen ${trxId} resmi ditolak`, 'warning');
       },
 
       // -------------------------------------------------------------
-      // KLASIFIKASI SELISIH
+      // PETUGAS: EKSEKUSI PERINTAH KERJA (WORK ORDER)
       // -------------------------------------------------------------
-      classifySelisih: (type, notes = '') => {
-        const timestamp = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        const targetItem = get().selectedAlertItem || get().items.find((i) => i.status === 'MISSING') || get().items[0];
-
-        let targetAlertStatus = `TERKLASIFIKASI: ${type}`;
-        if (type === 'MISPLACED') {
-          targetAlertStatus = 'TERKLASIFIKASI: MISPLACED (Koreksi Mutasi Lokasi)';
-        } else if (type === 'MISSING') {
-          targetAlertStatus = 'TERKLASIFIKASI: MISSING (Posting ke VIRT/OPNAME-DIFF)';
-        } else if (type === 'UNEXPECTED') {
-          targetAlertStatus = 'TERKLASIFIKASI: UNEXPECTED (Verifikasi Tag Nasabah)';
+      executeWorkOrder: (trxId) => {
+        if (get().currentRole !== 'PETUGAS') {
+          get().addToast('Akses terbatas: Hanya Petugas Vault yang dapat mengeksekusi perintah kerja fisik!', 'error');
+          return;
         }
 
-        const updatedAlerts = get().alerts.map((alt) => {
-          if (alt.itemId === targetItem?.id) {
-            return {
-              ...alt,
-              status: targetAlertStatus,
-              classification: type,
-              notes,
-              classifiedAt: timestamp,
-            };
-          }
-          return alt;
-        });
+        const trx = get().transactions.find((t) => t.id === trxId);
+        if (!trx || trx.status !== 'APPROVED') {
+          get().addToast('Perintah kerja ini belum disetujui oleh Supervisor atau sudah selesai!', 'warning');
+          return;
+        }
 
-        const newLog = {
-          id: `cls-${Date.now()}`,
-          time: timestamp,
-          title: `Selisih Terklasifikasi: ${type}`,
-          detail: `LT-01/${targetItem?.systemDrawerId || targetItem?.drawerId} · ${targetItem?.id} ${notes ? `— Catatan: ${notes}` : ''}`,
-          type: 'classification',
-          color: type === 'MISPLACED' ? 'blue' : type === 'MISSING' ? 'red' : 'orange',
-        };
+        const timeStr = new Date().toLocaleString('id-ID');
+        let updatedItems = [...get().items];
 
-        get().addAuditTrail(
-          'KLASIFIKASI_SELISIH',
-          `Tag ${targetItem?.id} diklasifikasikan sebagai ${type}. Catatan: ${notes || '-'}`,
-          'BERHASIL'
+        if (trx.type === 'INBOUND') {
+          // Menaruh barang baru ke laci & slot
+          const newItem = {
+            id: trx.itemId,
+            brand: trx.itemBrand,
+            weight: trx.weight,
+            purity: trx.purity,
+            sbg: trx.sbg,
+            cabinetId: 'LT-01',
+            drawerId: trx.targetDrawerId,
+            systemDrawerId: trx.targetDrawerId,
+            physicalDrawerId: trx.targetDrawerId,
+            slotId: trx.targetSlotId,
+            isPhysicallyPresent: true,
+            status: 'TERBACA',
+            customer: {
+              name: trx.customerName,
+              nik: trx.customerNik,
+              phone: trx.customerPhone,
+              address: trx.customerAddress,
+              loanAmount: trx.loanAmount,
+              loanType: trx.loanType,
+              contractDate: timeStr.split(' ')[0],
+              dueDate: '12/03/2027',
+              branch: 'Pegadaian CP Kramat Raya',
+            },
+            history: [
+              {
+                id: `H-${Date.now()}-1`,
+                timestamp: trx.requestTime,
+                event: 'INBOUND',
+                title: 'Pengajuan Akad Gadai',
+                actor: trx.requestedBy,
+                role: 'Staff Bisnis',
+                details: `Pendaftaran jaminan baru ${trx.sbg} ke slot ${trx.targetSlotId}.`,
+              },
+              {
+                id: `H-${Date.now()}-2`,
+                timestamp: trx.approvedTime,
+                event: 'APPROVAL',
+                title: 'Disetujui Supervisor',
+                actor: trx.approvedBy,
+                role: 'Supervisor Vault',
+                details: `Otorisasi penyimpanan nomor ${trx.id}.`,
+              },
+              {
+                id: `H-${Date.now()}-3`,
+                timestamp: timeStr,
+                event: 'PHYSICAL_IN',
+                title: 'Penempatan Fisik Selesai',
+                actor: 'petugas.vault01',
+                role: 'Petugas Vault',
+                details: `Fisik keping emas diletakkan di ${trx.targetSlotId} dan terverifikasi reader RFID.`,
+              },
+            ],
+          };
+
+          updatedItems = [newItem, ...updatedItems];
+
+          get().addAuditTrail(
+            'EKSEKUSI_INBOUND_FISIK',
+            `Petugas meletakkan fisik ${trx.itemId} di slot ${trx.targetSlotId}. RFID valid.`,
+            'BERHASIL'
+          );
+        } else if (trx.type === 'OUTBOUND') {
+          // Mengambil barang tebusan dari laci
+          updatedItems = updatedItems.map((it) => {
+            if (it.id === trx.itemId) {
+              return {
+                ...it,
+                isPhysicallyPresent: false,
+                slotId: null, // Slot laci kini kosong!
+                status: 'DITEBUS',
+                history: [
+                  ...it.history,
+                  {
+                    id: `H-${Date.now()}-4`,
+                    timestamp: trx.requestTime,
+                    event: 'OUTBOUND_REQ',
+                    title: 'Pengajuan Penebusan',
+                    actor: trx.requestedBy,
+                    role: 'Staff Bisnis',
+                    details: `Pengajuan pengeluaran barang tebus SBG: ${trx.sbg}.`,
+                  },
+                  {
+                    id: `H-${Date.now()}-5`,
+                    timestamp: trx.approvedTime,
+                    event: 'APPROVAL',
+                    title: 'Disetujui Supervisor',
+                    actor: trx.approvedBy,
+                    role: 'Supervisor Vault',
+                    details: `Otorisasi pengeluaran ${trx.id}.`,
+                  },
+                  {
+                    id: `H-${Date.now()}-6`,
+                    timestamp: timeStr,
+                    event: 'OUTBOUND',
+                    title: 'Fisik Diambil & Diserahkan',
+                    actor: 'petugas.vault01',
+                    role: 'Petugas Vault',
+                    details: `Barang fisik diambil dari ${trx.sourceSlotId} dan diserahkan ke nasabah. Slot kembali kosong.`,
+                  },
+                ],
+              };
+            }
+            return it;
+          });
+
+          get().addAuditTrail(
+            'EKSEKUSI_OUTBOUND_FISIK',
+            `Petugas mengambil fisik ${trx.itemId} dari slot ${trx.sourceSlotId} untuk diserahkan ke nasabah. Slot kini KOSONG.`,
+            'BERHASIL'
+          );
+        } else if (trx.type === 'MUTASI') {
+          // Memindahkan barang ke laci/slot baru
+          updatedItems = updatedItems.map((it) => {
+            if (it.id === trx.itemId) {
+              return {
+                ...it,
+                drawerId: trx.targetDrawerId,
+                systemDrawerId: trx.targetDrawerId,
+                physicalDrawerId: trx.targetDrawerId,
+                slotId: trx.targetSlotId,
+                status: 'TERBACA',
+                history: [
+                  ...it.history,
+                  {
+                    id: `H-${Date.now()}-7`,
+                    timestamp: timeStr,
+                    event: 'MUTASI',
+                    title: 'Pemindahan Fisik Selesai',
+                    actor: 'petugas.vault01',
+                    role: 'Petugas Vault',
+                    details: `Fisik dipindahkan dari ${trx.sourceSlotId} ke ${trx.targetSlotId}. Terverifikasi RFID.`,
+                  },
+                ],
+              };
+            }
+            return it;
+          });
+
+          get().addAuditTrail(
+            'EKSEKUSI_MUTASI_FISIK',
+            `Petugas memindahkan fisik ${trx.itemId} dari ${trx.sourceSlotId} ke ${trx.targetSlotId}`,
+            'BERHASIL'
+          );
+        }
+
+        // Tandai transaksi COMPLETED
+        const updatedTransactions = get().transactions.map((t) =>
+          t.id === trxId
+            ? {
+                ...t,
+                status: 'COMPLETED',
+                executedBy: 'petugas.vault01',
+                executedTime: timeStr,
+              }
+            : t
         );
 
         set({
-          alerts: updatedAlerts,
-          rfidLogs: [newLog, ...get().rfidLogs],
-          classificationModalOpen: false,
-        });
-      },
-
-      // -------------------------------------------------------------
-      // BERITA ACARA & REKONSILIASI
-      // -------------------------------------------------------------
-      createBeritaAcara: (baData) => {
-        const targetItem = get().selectedAlertItem || get().items.find((i) => i.status === 'MISSING') || {
-          id: 'E0040024',
-          brand: 'Galeri24 5 g',
-          systemDrawerId: 'L03',
-          drawerId: 'L03',
-        };
-
-        const id = `BA-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}`;
-        const timestamp = new Date().toLocaleString('id-ID');
-
-        const newBA = {
-          id,
-          date: timestamp,
-          itemId: targetItem.id,
-          itemBrand: targetItem.brand,
-          drawerId: targetItem.systemDrawerId || targetItem.drawerId,
-          officer: baData.officer || 'petugas.vault01',
-          witness: baData.witness || 'supervisor.vault',
-          findings: baData.findings || `Item ${targetItem.brand} (${targetItem.id}) tidak ditemukan pada fisik laci ${targetItem.systemDrawerId || targetItem.drawerId} setelah 3x verifikasi scanner.`,
-          postingAccount: 'VIRT/OPNAME-DIFF',
-          status: 'DITERBITKAN & TEREKONSILIASI',
-        };
-
-        const newLog = {
-          id: `ba-${Date.now()}`,
-          time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-          title: 'Berita Acara Diterbitkan',
-          detail: `No: ${id} · Akun: VIRT/OPNAME-DIFF · ${targetItem.id} direkonsiliasi`,
-          type: 'ba',
-          color: 'green',
-        };
-
-        // Update alert status to resolved
-        const updatedAlerts = get().alerts.map((alt) => {
-          if (alt.itemId === targetItem.id) {
-            return {
-              ...alt,
-              status: `RESOLVED (${id} - VIRT/OPNAME-DIFF)`,
-              resolvedBaNumber: id,
-            };
-          }
-          return alt;
-        });
-
-        // Set item reconciled / out of drawer
-        const updatedItems = get().items.map((it) => {
-          if (it.id === targetItem.id) {
-            return {
-              ...it,
-              status: 'RECONCILED_VIRT',
-            };
-          }
-          return it;
-        });
-
-        get().addAuditTrail(
-          'PENERBITAN_BERITA_ACARA',
-          `Penerbitan ${id}: ${targetItem.id} diposting ke akun virtual VIRT/OPNAME-DIFF`,
-          'BERHASIL'
-        );
-
-        set({
-          beritaAcaraList: [newBA, ...get().beritaAcaraList],
-          alerts: updatedAlerts,
           items: updatedItems,
-          rfidLogs: [newLog, ...get().rfidLogs],
-          beritaAcaraModalOpen: false,
-          kpi: {
-            ...get().kpi,
-            openDifference: Math.max(0, get().kpi.openDifference - 1),
-          },
+          transactions: updatedTransactions,
+          rfidLogs: [
+            {
+              id: `exec-${Date.now()}`,
+              time: new Date().toLocaleTimeString('id-ID'),
+              title: `Perintah Kerja Selesai (${trx.type})`,
+              detail: `${trxId} · ${trx.itemId} · Dieksekusi petugas.vault01 · Terverifikasi RFID`,
+              type: 'cycle-done',
+              color: 'green',
+            },
+            ...get().rfidLogs,
+          ],
         });
 
-        get().addToast(`Berita Acara ${id} berhasil diterbitkan & saldo direkonsiliasi`, 'success');
+        get().addToast(`Perintah kerja ${trxId} berhasil dieksekusi fisik & terverifikasi RFID!`, 'success');
       },
 
-      // Otorisasi & Penutupan Temuan Audit oleh SPI
-      closeBeritaAcara: (baId) => {
+      // -------------------------------------------------------------
+      // AUDIT TRAIL PERSISTENCE
+      // -------------------------------------------------------------
+      auditTrails: [
+        {
+          id: 'AUD-001',
+          timestamp: '20/10/2026 09:45:01',
+          action: 'SIKLUS_BACA_RFID',
+          actor: 'system:reader-mars4at',
+          details: 'Pindai otomatis lemari LT-01: 10 tag aktif terbaca normal (0 selisih)',
+          status: 'BERHASIL',
+        },
+        {
+          id: 'AUD-002',
+          timestamp: '20/10/2026 10:00:01',
+          action: 'PENERBITAN_SPK',
+          actor: 'supervisor.vault',
+          details: 'Otorisasi SPK Outbound TRX-OUT-202610-0043 untuk tag E0040018',
+          status: 'BERHASIL',
+        },
+      ],
+
+      addAuditTrail: (action, details, status = 'BERHASIL') => {
         const timestamp = new Date().toLocaleString('id-ID');
-        const updatedList = get().beritaAcaraList.map((ba) => {
-          if (ba.id === baId) {
-            return {
-              ...ba,
-              status: 'DITUTUP & DISETUJUI SPI',
-              closedAt: timestamp,
-              closedBy: 'auditor.spi01',
-            };
-          }
-          return ba;
-        });
+        const id = `AUD-${Date.now().toString().slice(-5)}`;
+        const actor =
+          get().currentRole === 'STAFF_BISNIS'
+            ? 'staff.bisnis01'
+            : get().currentRole === 'SUPERVISOR'
+            ? 'supervisor.vault'
+            : get().currentRole === 'SPI'
+            ? 'auditor.spi01'
+            : 'petugas.vault01';
 
-        get().addAuditTrail(
-          'PENUTUPAN_TEMUAN_SPI',
-          `Dokumen Berita Acara ${baId} resmi diotorisasi & ditutup oleh auditor.spi01`,
-          'BERHASIL'
-        );
-
-        set({ beritaAcaraList: updatedList });
-        get().addToast(`Temuan ${baId} resmi diotorisasi & ditutup oleh SPI`, 'success');
+        const newEntry = {
+          id,
+          timestamp,
+          action,
+          actor,
+          details,
+          status,
+        };
+        set({ auditTrails: [newEntry, ...get().auditTrails].slice(0, 100) });
       },
 
-      toggleAutoScan: () => set((s) => ({ autoScan: !s.autoScan })),
+      // Reader Status
+      readerStatus: 'ONLINE',
+      readDuration: '± 4 detik',
+      lastScanTime: '10:15:02',
+      isScanning: false,
 
-      // Reset Demo Data ke Initial Seeds
+      // -------------------------------------------------------------
+      // REKONSILIASI SCAN RFID CYCLE
+      // -------------------------------------------------------------
+      runScanCycle: () => {
+        set({ isScanning: true });
+        const timeStr = new Date().toLocaleTimeString('id-ID');
+        const currentItems = get().items;
+        const activeItems = currentItems.filter((i) => i.status !== 'DITEBUS' && i.status !== 'RECONCILED_VIRT');
+
+        const totalRead = activeItems.filter((i) => i.isPhysicallyPresent).length;
+        const totalSelisih = activeItems.filter((i) => !i.isPhysicallyPresent).length;
+
+        setTimeout(() => {
+          set({
+            isScanning: false,
+            lastScanTime: timeStr,
+            kpi: {
+              ...get().kpi,
+              totalVaultItems: activeItems.length,
+              readLastCycle: totalRead,
+              openDifference: totalSelisih,
+              accuracy: activeItems.length > 0 ? `${((totalRead / activeItems.length) * 100).toFixed(1)}%` : '100.0%',
+            },
+            rfidLogs: [
+              {
+                id: `scan-${Date.now()}`,
+                time: timeStr,
+                title: 'Siklus baca RFID selesai',
+                detail: `LT-01 · 3 laci · ${totalRead} tag aktif terbaca · ${totalSelisih} selisih`,
+                type: 'cycle-done',
+                color: totalSelisih > 0 ? 'orange' : 'green',
+              },
+              ...get().rfidLogs,
+            ].slice(0, 50),
+          });
+
+          get().addToast(`Siklus pindai selesai: ${totalRead} tag aktif terbaca normal`, 'success');
+        }, 800);
+      },
+
+      // Reset Demo Data
       resetToDefault: () => {
         set({
           activeView: 'dashboard',
+          currentRole: 'STAFF_BISNIS',
+          drawers: INITIAL_DRAWERS,
           items: INITIAL_ITEMS.map((item) => ({
             ...item,
             systemDrawerId: item.drawerId,
             physicalDrawerId: item.drawerId,
             isPhysicallyPresent: true,
             drawerId: item.drawerId,
-            status: 'TERBACA',
+            slotId: item.slotId || `${item.drawerId}-S01`,
+            status: item.status || 'TERBACA',
           })),
+          transactions: INITIAL_TRANSACTIONS,
+          transfers: INITIAL_TRANSFERS,
           selectedDrawer: 'L01',
           rfidLogs: INITIAL_RFID_LOGS,
           alerts: INITIAL_ALERTS,
-          transfers: INITIAL_TRANSFERS,
           kpi: INITIAL_KPI,
           beritaAcaraList: [],
-          autoScan: false,
-          physicalInteractionMode: false,
           lastScanTime: '10:15:02',
-          classificationModalOpen: false,
-          beritaAcaraModalOpen: false,
+          inboundModalOpen: false,
+          outboundModalOpen: false,
           transferModalOpen: false,
-          transferTargetItem: null,
-          selectedAlertItem: null,
-          auditTrails: [
-            {
-              id: 'AUD-001',
-              timestamp: '20/10/2026 09:45:01',
-              action: 'SIKLUS_BACA_RFID',
-              actor: 'system:reader-mars4at',
-              details: 'Pindai otomatis lemari LT-01: 10 tag terbaca normal (0 selisih)',
-              status: 'BERHASIL',
-            },
-          ],
+          itemDetailModalOpen: false,
+          drawerCapacityModalOpen: false,
         });
+        get().addToast('Data sistem Pegadaian Vault berhasil di-reset ke kondisi awal', 'info');
       },
     }),
     {
-      name: 'pegadaian_vault_v2_simple',
+      name: 'pegadaian_vault_v4_flow',
     }
   )
 );

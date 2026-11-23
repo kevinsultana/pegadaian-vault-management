@@ -18,6 +18,7 @@ export default function DashboardView() {
     alerts,
     rfidLogs,
     items,
+    transactions,
     transfers,
     beritaAcaraList,
     setActiveView,
@@ -25,12 +26,13 @@ export default function DashboardView() {
     lastScanTime,
   } = useVaultStore();
 
-  // Dynamic KPI Calculations based on real store state (PoC 10 Keping Emas LT-01)
-  const totalVaultItems = items.length;
-  const readLastCycle = items.filter((i) => i.isPhysicallyPresent).length;
+  // Dynamic KPI Calculations based on active vault items
+  const activeItems = items.filter((i) => i.status !== 'DITEBUS');
+  const totalVaultItems = activeItems.length;
+  const readLastCycle = activeItems.filter((i) => i.isPhysicallyPresent).length;
 
   // Selisih = total items yang isPhysicallyPresent === false dan belum selesai diaudit
-  const openDifference = items.filter(
+  const openDifference = activeItems.filter(
     (i) => !i.isPhysicallyPresent && i.status !== 'RECONCILED_VIRT'
   ).length;
 
@@ -39,11 +41,11 @@ export default function DashboardView() {
     ? ((readLastCycle / totalVaultItems) * 100).toFixed(1) + '%'
     : '100.0%';
 
-  // Mutasi Hari Ini = hitung jumlah dokumen transfer approved/verified + Berita Acara hari ini
-  const approvedTransfersCount = transfers.filter(
-    (t) => t.status === 'APPROVED' || t.status === 'VERIFIED'
+  // Mutasi Hari Ini = hitung jumlah transaksi selesai + Berita Acara hari ini
+  const completedTrxCount = (transactions || []).filter(
+    (t) => t.status === 'COMPLETED' || t.status === 'APPROVED'
   ).length;
-  const todayMutations = approvedTransfersCount + beritaAcaraList.length;
+  const todayMutations = completedTrxCount + beritaAcaraList.length;
 
   // Dynamic check for LT-01 drawers with selisih (Skenario L03)
   const l03HasSelisih = items.some(
@@ -147,7 +149,7 @@ export default function DashboardView() {
             <span className="text-2xl font-bold font-mono text-slate-900 leading-none">
               {todayMutations}
             </span>
-            <p className="text-[10px] text-slate-400 mt-1">{approvedTransfersCount} transfer · {beritaAcaraList.length} BA</p>
+            <p className="text-[10px] text-slate-400 mt-1">{completedTrxCount} transaksi · {beritaAcaraList.length} BA</p>
           </div>
         </div>
       </div>

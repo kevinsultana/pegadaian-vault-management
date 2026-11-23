@@ -324,7 +324,7 @@ export default function ReportsView() {
                   Catatan Hasil Pemeriksaan Lapangan:
                 </p>
                 <p className="p-3 bg-white border border-slate-200 rounded text-slate-700 italic text-[11px]">
-                  "{selectedPrintBA.findings}"
+                  &quot;{selectedPrintBA.findings}&quot;
                 </p>
               </div>
 
