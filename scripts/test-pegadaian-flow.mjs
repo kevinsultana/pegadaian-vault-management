@@ -258,11 +258,69 @@ assert(updateBySpv === true, 'Supervisor BERHASIL mengubah kapasitas laci L01 me
 const updatedDrawerL01 = useVaultStore.getState().drawers.find((d) => d.id === 'L01');
 assert(updatedDrawerL01.totalCapacity === 16, `Kapasitas laci L01 sekarang dinamis: ${updatedDrawerL01.totalCapacity} slot`);
 
-// 7. SPI Audit Trail & Laporan
-console.log('\n--- TEST 9: Pengawasan Audit SPI (Read-Only & Integritas Audit Trail) ---');
+// 7. Master Lemari & Laci Management (Khusus Supervisor)
+console.log('\n--- TEST 9: Master Lemari & Laci Management (Khusus Supervisor) ---');
+useVaultStore.getState().setCurrentRole('STAFF_BISNIS');
+const addByStaff = useVaultStore.getState().addDrawer({ id: 'L04', name: 'Laci 04', totalCapacity: 20 });
+assert(addByStaff === false, 'Staff Bisnis DITOLAK menambah laci baru (Hanya hak Supervisor)');
+
+useVaultStore.getState().setCurrentRole('SUPERVISOR');
+
+// Update Cabinet Info
+const updateCabResult = useVaultStore.getState().updateCabinet({
+  name: 'Lemari Khazanah Emas Sentral LT-01',
+  location: 'Ruang Khazanah Utama Lt. 1, CP Kramat Raya',
+});
+assert(updateCabResult === true, 'Supervisor BERHASIL memperbarui data Master Lemari LT-01');
+assert(
+  useVaultStore.getState().cabinet.name === 'Lemari Khazanah Emas Sentral LT-01',
+  'Nama lemari diperbarui di store'
+);
+
+// Tambah Laci Baru L04
+const addDrawerResult = useVaultStore.getState().addDrawer({
+  id: 'L04',
+  name: 'Laci 04 (Kompartemen Baru Emas Retail)',
+  category: 'Galeri24 & Mini Gold',
+  totalCapacity: 20,
+  rows: 4,
+  cols: 5,
+  slotsPrefix: 'L04-S',
+});
+assert(addDrawerResult === true, 'Supervisor BERHASIL menambahkan kompartemen L04 ke Master Lemari');
+
+const addedDrawerL04 = useVaultStore.getState().drawers.find((d) => d.id === 'L04');
+assert(addedDrawerL04 !== undefined, 'Laci L04 resmi terdaftar dalam daftar laci lemari');
+assert(addedDrawerL04?.totalCapacity === 20, 'Kapasitas laci L04 terkonfigurasi 20 slot (Grid 4x5)');
+assert(addedDrawerL04?.rows === 4 && addedDrawerL04?.cols === 5, 'Layout grid laci L04 eksplisit 4 baris x 5 kolom');
+
+// Update data laci L04
+const editDrawerResult = useVaultStore.getState().updateDrawer('L04', {
+  name: 'Laci 04 (Emas Khusus & Batangan Kecil)',
+});
+assert(editDrawerResult === true, 'Supervisor BERHASIL mengedit nama/kategori laci L04');
+assert(
+  useVaultStore.getState().drawers.find((d) => d.id === 'L04')?.name === 'Laci 04 (Emas Khusus & Batangan Kecil)',
+  'Nama laci L04 terverifikasi berubah'
+);
+
+// Safety Check: Hapus Laci yang masih berisi barang harus DITOLAK
+const deleteOccupied = useVaultStore.getState().deleteDrawer('L01');
+assert(deleteOccupied === false, 'DITOLAK menghapus laci L01 karena masih berisi keping emas aktif (Proteksi Keamanan)');
+
+// Hapus Laci L04 yang kosong harus BERHASIL
+const deleteEmpty = useVaultStore.getState().deleteDrawer('L04');
+assert(deleteEmpty === true, 'Supervisor BERHASIL menghapus laci kosong L04 dari Master Lemari');
+assert(
+  useVaultStore.getState().drawers.find((d) => d.id === 'L04') === undefined,
+  'Laci L04 resmi terhapus dari daftar kompartemen'
+);
+
+// 8. SPI Audit Trail & Laporan
+console.log('\n--- TEST 10: Pengawasan Audit SPI (Read-Only & Integritas Audit Trail) ---');
 useVaultStore.getState().setCurrentRole('SPI');
 const currentAudits = useVaultStore.getState().auditTrails;
-assert(currentAudits.length >= 7, `Audit trail mencatat seluruh transaksi digital secara otomatis (Total log: ${currentAudits.length})`);
+assert(currentAudits.length >= 8, `Audit trail mencatat seluruh transaksi digital secara otomatis (Total log: ${currentAudits.length})`);
 assert(useVaultStore.getState().currentRole === 'SPI', 'Peran aktif adalah SPI (Auditor Pengawas)');
 
 console.log('\n====================================================');

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import {
+  INITIAL_CABINET,
   INITIAL_ITEMS,
   INITIAL_DRAWERS,
   INITIAL_TRANSACTIONS,
@@ -50,11 +51,135 @@ export const useVaultStore = create(
       },
 
       // -------------------------------------------------------------
-      // DRAWERS & DINAMIS KAPASITAS
+      // MASTER LEMARI (CABINET) & LACI (DRAWERS) — KHUSUS SUPERVISOR
       // -------------------------------------------------------------
+      cabinet: INITIAL_CABINET,
+      updateCabinet: (data) => {
+        const role = get().currentRole;
+        if (role !== 'SUPERVISOR') {
+          get().addToast('Akses ditolak: Hanya Supervisor yang berhak mengedit data Master Lemari!', 'error');
+          return false;
+        }
+        set({ cabinet: { ...get().cabinet, ...data } });
+        get().addAuditTrail(
+          'UPDATE_MASTER_LEMARI',
+          `Supervisor memperbarui informasi Master Lemari: ${data.name || get().cabinet.name} (${get().cabinet.id})`,
+          'BERHASIL'
+        );
+        get().addToast('Data Master Lemari berhasil diperbarui!', 'success');
+        return true;
+      },
+
       drawers: INITIAL_DRAWERS,
       selectedDrawer: 'L01',
       setSelectedDrawer: (drawerId) => set({ selectedDrawer: drawerId }),
+
+      addDrawer: (drawerData) => {
+        const role = get().currentRole;
+        if (role !== 'SUPERVISOR') {
+          get().addToast('Akses ditolak: Hanya Supervisor yang berhak menambah laci baru!', 'error');
+          return false;
+        }
+
+        const { id, name, category, totalCapacity = 12, rows = 3, cols = 4, slotsPrefix } = drawerData;
+        const cleanId = (id || `L0${get().drawers.length + 1}`).trim().toUpperCase();
+
+        if (get().drawers.some((d) => d.id === cleanId)) {
+          get().addToast(`Laci dengan kode ${cleanId} sudah terdaftar!`, 'error');
+          return false;
+        }
+
+        const newDrawer = {
+          id: cleanId,
+          name: name || `Laci ${cleanId}`,
+          cabinetId: get().cabinet?.id || 'LT-01',
+          totalCapacity: Number(totalCapacity) || 12,
+          rows: Number(rows) || 3,
+          cols: Number(cols) || 4,
+          slotsPrefix: slotsPrefix || `${cleanId}-S`,
+          status: 'TERBACA',
+          category: category || 'Emas Batangan & Perhiasan',
+        };
+
+        set({ drawers: [...get().drawers, newDrawer] });
+        get().addAuditTrail(
+          'TAMBAH_LACI_MASTER',
+          `Supervisor menambahkan laci baru: ${cleanId} (${newDrawer.name}) dengan kapasitas ${newDrawer.totalCapacity} slot (${newDrawer.rows}x${newDrawer.cols}).`,
+          'BERHASIL'
+        );
+        get().addToast(`Laci ${cleanId} berhasil ditambahkan ke Master Lemari!`, 'success');
+        return true;
+      },
+
+      updateDrawer: (drawerId, drawerData) => {
+        const role = get().currentRole;
+        if (role !== 'SUPERVISOR') {
+          get().addToast('Akses ditolak: Hanya Supervisor yang berhak mengedit data laci!', 'error');
+          return false;
+        }
+
+        const updatedDrawers = get().drawers.map((d) => {
+          if (d.id === drawerId) {
+            return {
+              ...d,
+              ...drawerData,
+              totalCapacity: drawerData.totalCapacity !== undefined ? Number(drawerData.totalCapacity) : d.totalCapacity,
+              rows: drawerData.rows !== undefined ? Number(drawerData.rows) : d.rows,
+              cols: drawerData.cols !== undefined ? Number(drawerData.cols) : d.cols,
+              slotsPrefix: drawerData.slotsPrefix || d.slotsPrefix,
+            };
+          }
+          return d;
+        });
+
+        set({ drawers: updatedDrawers });
+        get().addAuditTrail(
+          'UPDATE_LACI_MASTER',
+          `Supervisor memperbarui konfigurasi Master Laci ${drawerId}`,
+          'BERHASIL'
+        );
+        get().addToast(`Data laci ${drawerId} berhasil diperbarui!`, 'success');
+        return true;
+      },
+
+      deleteDrawer: (drawerId) => {
+        const role = get().currentRole;
+        if (role !== 'SUPERVISOR') {
+          get().addToast('Akses ditolak: Hanya Supervisor yang berhak menghapus laci!', 'error');
+          return false;
+        }
+
+        // Safety verification: cannot delete drawer with active items
+        const itemsInDrawer = get().items.filter(
+          (it) =>
+            (it.drawerId === drawerId || it.systemDrawerId === drawerId) &&
+            it.status !== 'DITEBUS' &&
+            it.status !== 'RELOKASI_KELUAR'
+        );
+
+        if (itemsInDrawer.length > 0) {
+          get().addToast(
+            `Laci ${drawerId} tidak dapat dihapus karena masih memuat ${itemsInDrawer.length} keping emas aktif!`,
+            'error'
+          );
+          return false;
+        }
+
+        if (get().drawers.length <= 1) {
+          get().addToast('Lemari harus memiliki minimal 1 laci. Tidak dapat menghapus laci terakhir!', 'warning');
+          return false;
+        }
+
+        const updated = get().drawers.filter((d) => d.id !== drawerId);
+        set({ drawers: updated, selectedDrawer: updated[0]?.id || 'L01' });
+        get().addAuditTrail(
+          'HAPUS_LACI_MASTER',
+          `Supervisor menghapus laci kosong ${drawerId} dari Master Lemari`,
+          'BERHASIL'
+        );
+        get().addToast(`Laci ${drawerId} berhasil dihapus dari Master Lemari.`, 'info');
+        return true;
+      },
 
       updateDrawerCapacity: (drawerId, { totalCapacity, rows, cols, slotsPrefix }) => {
         const role = get().currentRole;
@@ -942,6 +1067,7 @@ export const useVaultStore = create(
         set({
           activeView: 'dashboard',
           currentRole: 'STAFF_BISNIS',
+          cabinet: INITIAL_CABINET,
           drawers: INITIAL_DRAWERS,
           items: INITIAL_ITEMS.map((item) => ({
             ...item,

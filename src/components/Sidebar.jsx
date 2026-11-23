@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   ArrowLeftRight,
   Layers,
+  Sliders,
   Boxes,
   ClipboardList,
   CheckCircle2,
@@ -41,6 +42,14 @@ export default function Sidebar() {
       label: 'Peta Slot Laci (Parkir)',
       href: '/lemari-laci',
       icon: Layers,
+    },
+    {
+      id: 'master-laci',
+      label: 'Master Lemari & Laci',
+      href: '/master-laci',
+      icon: Sliders,
+      badge: currentRole === 'SUPERVISOR' ? 'SPV' : 'Khusus SPV',
+      badgeColor: currentRole === 'SUPERVISOR' ? 'bg-amber-400 text-slate-950 font-bold' : 'bg-slate-700/80 text-slate-400',
     },
     { id: 'inventory', label: 'Inventori Emas', href: '/inventory', icon: Boxes },
     {

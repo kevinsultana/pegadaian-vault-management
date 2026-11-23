@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useVaultStore } from '../../store/useVaultStore';
 import DrawerMatrix from '../DrawerMatrix';
@@ -17,6 +18,7 @@ import {
   PlusCircle,
   ArrowUpRight,
   ClipboardList,
+  Sliders,
 } from 'lucide-react';
 
 export default function DrawerMonitorView() {
@@ -74,6 +76,17 @@ export default function DrawerMonitorView() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Quick Action for Supervisor */}
+          {isSupervisor && (
+            <Link
+              href="/master-laci"
+              className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-colors"
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span>Master Lemari &amp; Laci</span>
+            </Link>
+          )}
+
           {/* Quick Action for Staff Bisnis */}
           {isStaffBisnis && (
             <>

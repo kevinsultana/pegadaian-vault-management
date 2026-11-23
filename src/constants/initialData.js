@@ -1,6 +1,17 @@
 // Data Contract & Initial Seeds for UNOTEK Vault Management System - Pegadaian PoC
 // Spesifikasi: 1 Lemari (LT-01), 3 Laci (L01, L02, L03), Kapasitas Dinamis & Slot Eksplisit (Konsep Parkiran Mall)
 
+export const INITIAL_CABINET = {
+  id: 'LT-01',
+  name: 'Lemari Khazanah Emas Utama LT-01',
+  location: 'Ruang Khazanah Vault Lt. 1, Pegadaian CP Kramat Raya',
+  brand: 'Chubbsafes Europa Grade V (EN 1143-1)',
+  antennaModel: 'MARS-4AT Multi-Antenna Multiplexer',
+  frequency: 'UHF 920-925 MHz (EPC Gen2)',
+  securityLevel: 'High Security Dual Control',
+  status: 'ONLINE',
+};
+
 export const INITIAL_DRAWERS = [
   {
     id: 'L01',

@@ -123,18 +123,43 @@ flowchart TD
 
 ---
 
-### C. Alur Kustomisasi Kapasitas Dinamis Laci (Khusus Supervisor)
-Supervisor dapat mengubah kapasitas tampung slot pada setiap laci secara eksplisit dan fleksibel.
+### C. Alur Master Lemari & Laci (Menu Khusus Supervisor)
+Supervisor Vault kini memiliki menu khusus **Master Lemari & Laci** (`/master-laci`) untuk mengonfigurasi struktur fisik lemari brankas, menambah/mengurangi kompartemen laci, serta mengubah besaran layout grid slot per laci secara dinamis dan independen.
 
-**Langkah Praktik:**
-1. Di Header, pastikan peran: **Supervisor Vault**.
-2. Buka menu **Peta Slot Laci (Parkir)**.
-3. Pada kartu laci (contoh `L01`), klik tombol **Atur (12 Slot)**.
-4. Muncul modal pengaturan kapasitas:
-   - Pilih preset cepat: **12 Slot**, **16 Slot**, **20 Slot**, atau **24 Slot**.
-   - Atau atur manual Jumlah Baris, Jumlah Kolom, dan Prefix Penomoran Slot (contoh: `L01-S01` s/d `L01-S16`).
-   - Tinjau preview layout grid secara *real-time*.
-5. Klik **Simpan Kapasitas Laci**. Kapasitas laci seketika menyesuaikan secara dinamis.
+```mermaid
+flowchart TD
+    SPV[Supervisor Vault Masuk ke Menu Master Lemari & Laci] --> A[Kelola Informasi Lemari Khazanah]
+    SPV --> B[Kelola Jumlah Kompartemen Laci]
+    SPV --> C[Atur Besaran & Layout Grid Slot Per Laci]
+    
+    A --> A1[Edit Nama, Lokasi, Merek Brankas, Model Reader Antena]
+    B --> B1[+ Tambah Laci Baru: Kode, Nama, Kategori, Slot Awal]
+    B --> B2[Hapus Laci Kosong: Proteksi Keamanan Emas Aktif]
+    C --> C1[Pilih Preset: 12, 16, 20, 24 Slot]
+    C --> C2[Atur Manual: Jumlah Baris x Jumlah Kolom]
+    C --> C3[Prefix Penomoran Slot: L01-S01 s/d L01-S24]
+    
+    C1 --> D[Peta Slot Parkiran Mall & Transaksi Tersinkronisasi Otomatis]
+    C2 --> D
+```
+
+#### Cara Mengubah Layout atau Besaran Laci Menjadi Beberapa Slot:
+1. Di Header, pastikan peran aktif: **Supervisor Vault**.
+2. Masuk ke menu **Master Lemari & Laci** di Sidebar (berlabel badge *SPV*).
+3. **Mengubah Kapasitas / Besaran Slot Per Laci:**
+   - Pada kartu laci (contoh `L01`), klik tombol **"Ubah Besaran & Layout Slot"**.
+   - **Pilihan Preset Cepat:** Pilih **12 Slot** (3×4), **16 Slot** (4×4), **20 Slot** (4×5), atau **24 Slot** (4×6).
+   - **Pilihan Kustom Baris × Kolom:** Masukkan angka baris dan kolom yang diinginkan (misal: 4 baris × 5 kolom = 20 slot).
+   - **Prefix Penomoran:** Atur format kode slot (misal `L01-S` menghasilkan `L01-S01` s/d `L01-S20`).
+   - Tinjau preview visual grid secara langsung.
+   - Klik **Simpan Kapasitas Laci**.
+4. **Menambah Laci Baru:**
+   - Klik tombol **"+ Tambah Laci Baru"** di bagian atas.
+   - Masukkan Kode Laci (contoh: `L04`), Nama Laci (contoh: `Laci 04 (Koleksi Emas Retail)`), Kategori, dan kapasitas slot awalnya.
+   - Klik **+ Tambahkan Laci**. Laci baru langsung aktif dan terhubung ke sistem.
+5. **Menghapus Laci:**
+   - Supervisor dapat menghapus laci kosong dengan mengklik ikon tong sampah pada kartu laci.
+   - *Proteksi Keamanan:* Jika laci masih berisi keping emas aktif, sistem secara otomatis **MENOLAK** penghapusan laci dan menampilkan peringatan untuk memindahkan/mengosongkan emas terlebih dahulu.
 
 ---
 
@@ -153,7 +178,7 @@ SPI bertugas memastikan integritas fisik brankas terhadap pembukuan tanpa dapat 
 
 ---
 
-## 4. Hasil Pengujian Otomatis End-to-End (48/48 PASS)
+## 4. Hasil Pengujian Otomatis End-to-End (60/60 PASS)
 
 Pengujian komprehensif dijalankan menggunakan script `scripts/test-pegadaian-flow.mjs` dan verifikasi HTTP Next.js:
 
@@ -224,21 +249,36 @@ Pengujian komprehensif dijalankan menggunakan script `scripts/test-pegadaian-flo
   [PASS] Supervisor BERHASIL mengubah kapasitas laci L01 menjadi 16 slot (Grid 4x4)
   [PASS] Kapasitas laci L01 sekarang dinamis: 16 slot
 
---- TEST 9: Pengawasan Audit SPI (Read-Only & Integritas Audit Trail) ---
-  [PASS] Audit trail mencatat seluruh transaksi digital secara otomatis (Total log: 15)
+--- TEST 9: Master Lemari & Laci Management (Khusus Supervisor) ---
+  [PASS] Staff Bisnis DITOLAK menambah laci baru (Hanya hak Supervisor)
+  [PASS] Supervisor BERHASIL memperbarui data Master Lemari LT-01
+  [PASS] Nama lemari diperbarui di store
+  [PASS] Supervisor BERHASIL menambahkan kompartemen L04 ke Master Lemari
+  [PASS] Laci L04 resmi terdaftar dalam daftar laci lemari
+  [PASS] Kapasitas laci L04 terkonfigurasi 20 slot (Grid 4x5)
+  [PASS] Layout grid laci L04 eksplisit 4 baris x 5 kolom
+  [PASS] Supervisor BERHASIL mengedit nama/kategori laci L04
+  [PASS] Nama laci L04 terverifikasi berubah
+  [PASS] DITOLAK menghapus laci L01 karena masih berisi keping emas aktif (Proteksi Keamanan)
+  [PASS] Supervisor BERHASIL menghapus laci kosong L04 dari Master Lemari
+  [PASS] Laci L04 resmi terhapus dari daftar kompartemen
+
+--- TEST 10: Pengawasan Audit SPI (Read-Only & Integritas Audit Trail) ---
+  [PASS] Audit trail mencatat seluruh transaksi digital secara otomatis (Total log: 19)
   [PASS] Peran aktif adalah SPI (Auditor Pengawas)
 
 ====================================================
-HASIL PENGETESAN ALUR: 48 PASS, 0 FAIL
+HASIL PENGETESAN ALUR: 60 PASS, 0 FAIL
 STATUS: SELURUH ALUR OPERASIONAL PEGADAIAN 100% SUKSES!
 ====================================================
 ```
 
-Seluruh 14 rute Next.js terverifikasi berhasil dikompilasi pada tahap build:
+Seluruh 15 rute Next.js terverifikasi berhasil dikompilasi pada tahap build:
 - `/`
 - `/dashboard`
 - `/transaksi`
 - `/lemari-laci`
+- `/master-laci`
 - `/inventory`
 - `/perintah-kerja`
 - `/approval`
