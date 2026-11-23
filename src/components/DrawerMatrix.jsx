@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   Clock,
+  Layers,
 } from 'lucide-react';
 
 export default function DrawerMatrix() {
@@ -32,31 +33,38 @@ export default function DrawerMatrix() {
   return (
     <div className="space-y-4">
       {/* Legend & Concept Header */}
-      <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div className="flex items-center space-x-2">
-          <MapPin className="w-4 h-4 text-[#008ba3]" />
-          <span className="font-bold text-slate-800">
-            Peta Visual Kapasitas Laci Vault (Konsep Parkiran Mall)
-          </span>
-          <span className="text-slate-400">•</span>
-          <span className="text-slate-500 text-[11px]">
-            Slot hijau siap dialokasikan untuk transaksi Inbound baru
-          </span>
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="flex items-center space-x-2.5">
+          <div className="p-1.5 rounded-lg bg-[#008ba3]/15 text-[#008ba3]">
+            <MapPin className="w-4 h-4" />
+          </div>
+          <div>
+            <h3 className="font-bold text-slate-800">
+              Peta Kapasitas Laci Vault (Konsep Parkiran Mobil Mall)
+            </h3>
+            <p className="text-slate-400 text-[11px]">
+              Sensor LED hijau menunjukkan slot kosong yang siap dialokasikan untuk emas Inbound baru
+            </p>
+          </div>
         </div>
 
-        {/* Status Indicators */}
-        <div className="flex items-center gap-3 text-[11px]">
-          <span className="flex items-center gap-1.5 font-medium text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Kosong (Bisa Ditempati)
+        {/* Status LED Indicators */}
+        <div className="flex flex-wrap items-center gap-2.5 text-[11px]">
+          <span className="flex items-center gap-1.5 font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.9)] animate-pulse"></span>
+            Kosong (Siap Ditempati)
           </span>
-          <span className="flex items-center gap-1.5 font-medium text-sky-800 bg-sky-50 px-2 py-0.5 rounded border border-sky-200">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#008ba3]"></span> Terisi Emas Aktif
+          <span className="flex items-center gap-1.5 font-semibold text-sky-800 bg-sky-50 px-2.5 py-1 rounded-full border border-sky-200">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#008ba3] shadow-[0_0_6px_rgba(0,180,216,0.6)]"></span>
+            Terisi Emas Aktif
           </span>
-          <span className="flex items-center gap-1.5 font-medium text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-400"></span> Reserved (Menunggu Approval)
+          <span className="flex items-center gap-1.5 font-semibold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.6)]"></span>
+            Reserved (Pending)
           </span>
-          <span className="flex items-center gap-1.5 font-medium text-rose-800 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
-            <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Selisih / Anomali
+          <span className="flex items-center gap-1.5 font-semibold text-rose-800 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-200">
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_6px_rgba(244,63,94,0.9)] animate-ping"></span>
+            Anomali / Selisih
           </span>
         </div>
       </div>
@@ -114,7 +122,7 @@ export default function DrawerMatrix() {
           return (
             <div
               key={d.id}
-              className={`bg-white rounded-xl border transition-all shadow-xs flex flex-col justify-between overflow-hidden ${
+              className={`bg-white rounded-2xl border transition-all shadow-xs flex flex-col justify-between overflow-hidden ${
                 isSelected
                   ? 'border-[#008ba3] ring-2 ring-[#00b4d8]/40 shadow-md'
                   : 'border-slate-200 hover:border-slate-300'
@@ -124,7 +132,7 @@ export default function DrawerMatrix() {
               <div className="p-4 bg-slate-50/70 border-b border-slate-200 flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-sm font-bold text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200">
+                    <span className="font-mono text-sm font-bold text-slate-900 bg-white px-2.5 py-0.5 rounded border border-slate-200">
                       {d.id}
                     </span>
                     <h3 className="font-bold text-slate-800 text-xs">{d.name}</h3>
@@ -156,11 +164,11 @@ export default function DrawerMatrix() {
               {/* Occupancy Progress Bar */}
               <div className="px-4 py-2.5 border-b border-slate-100 bg-white flex items-center justify-between text-[11px]">
                 <div className="flex items-center space-x-2">
-                  <span className="text-slate-500">Keterisian:</span>
+                  <span className="text-slate-500">Kapasitas:</span>
                   <span className="font-mono font-bold text-slate-800">
                     {occupiedCount} / {totalCap}
                   </span>
-                  <span className="text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200 text-[10px]">
+                  <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.2 rounded-full border border-emerald-200 text-[10px]">
                     {availableCount} Kosong
                   </span>
                 </div>
@@ -186,18 +194,22 @@ export default function DrawerMatrix() {
                     const isReserved = s.slotStatus === 'RESERVED';
                     const isAnomaly = s.slotStatus === 'ANOMALY';
 
-                    let btnClass = 'bg-emerald-50 border-emerald-300 hover:bg-emerald-100 text-emerald-950 cursor-pointer';
+                    let btnClass = 'bg-emerald-50/80 border-emerald-300 hover:bg-emerald-100 text-emerald-950 cursor-pointer shadow-2xs';
                     let label = 'KOSONG';
+                    let ledColor = 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.9)]';
 
                     if (isOccupied) {
                       btnClass = 'bg-[#e0f2fe] border-[#38bdf8] hover:bg-[#bae6fd] text-slate-900 cursor-pointer shadow-2xs';
                       label = s.item.brand.replace('ANTAM ', '').replace('Galeri24 ', 'G24 ');
+                      ledColor = 'bg-[#008ba3] shadow-[0_0_5px_rgba(0,180,216,0.8)]';
                     } else if (isReserved) {
                       btnClass = 'bg-amber-50 border-amber-300 hover:bg-amber-100 text-amber-900 cursor-default';
                       label = 'Reserved';
+                      ledColor = 'bg-amber-500';
                     } else if (isAnomaly) {
                       btnClass = 'bg-rose-100 border-rose-400 hover:bg-rose-200 text-rose-900 animate-pulse cursor-pointer';
                       label = 'Selisih';
+                      ledColor = 'bg-rose-600 animate-ping';
                     }
 
                     return (
@@ -212,19 +224,25 @@ export default function DrawerMatrix() {
                             setInboundModalOpen(true, s.slotId);
                           }
                         }}
-                        className={`p-2 rounded-lg border text-center transition-all flex flex-col justify-between items-center min-h-[58px] ${btnClass}`}
+                        className={`p-2 rounded-xl border text-center transition-all flex flex-col justify-between items-center min-h-[62px] relative group ${btnClass}`}
                         title={
                           isOccupied
-                            ? `Klik untuk detail: ${s.item.brand} (${s.item.id}) - Nasabah: ${s.item.customer?.name}`
+                            ? `Detail: ${s.item.brand} (${s.item.id}) - Nasabah: ${s.item.customer?.name} (${s.item.sbg})`
                             : isAvailable
                             ? `Slot ${s.slotId} Kosong. Klik untuk Inbound baru.`
                             : 'Slot Reserved'
                         }
                       >
-                        <span className="font-mono text-[11px] font-bold tracking-tight">
-                          {s.slotNum}
-                        </span>
-                        <span className="text-[9px] font-medium leading-tight truncate w-full text-center">
+                        {/* Top row with slot number and parking sensor LED */}
+                        <div className="w-full flex items-center justify-between">
+                          <span className="font-mono text-[11px] font-bold tracking-tight">
+                            {s.slotNum}
+                          </span>
+                          <span className={`w-2 h-2 rounded-full ${ledColor}`}></span>
+                        </div>
+
+                        {/* Label or Brand snippet */}
+                        <span className="text-[9px] font-semibold leading-tight truncate w-full text-center">
                           {label}
                         </span>
                       </button>
@@ -234,7 +252,7 @@ export default function DrawerMatrix() {
               </div>
 
               {/* Drawer Card Footer */}
-              <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs">
+              <div className="p-3 bg-slate-50/80 border-t border-slate-200 flex items-center justify-between text-xs">
                 <button
                   type="button"
                   onClick={() => setSelectedDrawer(d.id)}
@@ -253,7 +271,7 @@ export default function DrawerMatrix() {
                       setSelectedDrawer(d.id);
                       setInboundModalOpen(true);
                     }}
-                    className="px-2.5 py-1 rounded bg-[#008ba3] hover:bg-[#00758a] text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                    className="px-2.5 py-1 rounded-lg bg-[#008ba3] hover:bg-[#00758a] text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
                   >
                     <PlusCircle className="w-3 h-3" />
                     <span>Inbound Laci Ini</span>

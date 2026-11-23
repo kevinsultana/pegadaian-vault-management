@@ -14,7 +14,9 @@ import {
   FileText,
   CheckCircle2,
   RefreshCw,
-  Hand,
+  PlusCircle,
+  ArrowUpRight,
+  ClipboardList,
 } from 'lucide-react';
 
 export default function DrawerMonitorView() {
@@ -30,9 +32,10 @@ export default function DrawerMonitorView() {
     setBeritaAcaraModalOpen,
     runScanCycle,
     isScanning,
-    physicalInteractionMode,
-    togglePhysicalInteractionMode,
     setSelectedDrawer,
+    currentRole,
+    setInboundModalOpen,
+    setOutboundModalOpen,
   } = useVaultStore();
 
   useEffect(() => {
@@ -40,6 +43,10 @@ export default function DrawerMonitorView() {
       setSelectedDrawer(drawerParam);
     }
   }, [drawerParam, setSelectedDrawer]);
+
+  const isStaffBisnis = currentRole === 'STAFF_BISNIS';
+  const isSupervisor = currentRole === 'SUPERVISOR';
+  const isPetugas = currentRole === 'PETUGAS';
 
   // Check if there are active missing items / selisih
   const missingItems = items.filter((it) => it.status === 'MISSING');
@@ -58,42 +65,52 @@ export default function DrawerMonitorView() {
       {/* Subheader & Status Badges */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-1">
         <div>
-          <h2 className="text-xl font-bold text-slate-800 tracking-tight">
-            Lemari & Laci — LT-01 (Lemari Tunggal)
+          <h2 className="text-xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
+            <span>Lemari & Laci — LT-01 (Peta Kapasitas Brankas)</span>
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Siklus baca terakhir {lastScanTime} · reader MARS-4AT {readerStatus.toLowerCase()} · 12 laci terpindai
+            Siklus baca terakhir {lastScanTime} · reader MARS-4AT {readerStatus.toLowerCase()} · sensor antena multiplexer aktif
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Toggle Mode Interaksi Fisik (Sandbox) */}
-          <button
-            onClick={togglePhysicalInteractionMode}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border ${
-              physicalInteractionMode
-                ? 'bg-amber-500 text-slate-900 border-amber-600 shadow-sm font-bold'
-                : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-            }`}
-            title="Toggle simulasi tangan petugas memindahkan atau mengambil fisik barang"
-          >
-            <Hand className="w-3.5 h-3.5" />
-            <span>Mode Interaksi Fisik: {physicalInteractionMode ? 'AKTIF' : 'OFF'}</span>
-          </button>
+          {/* Quick Action for Staff Bisnis */}
+          {isStaffBisnis && (
+            <>
+              <button
+                type="button"
+                onClick={() => setInboundModalOpen(true)}
+                className="px-3 py-1.5 rounded-lg bg-[#008ba3] hover:bg-[#00758a] text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+                <span>+ Inbound Baru</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setOutboundModalOpen(true)}
+                className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+              >
+                <ArrowUpRight className="w-3.5 h-3.5" />
+                <span>Outbound Tebus</span>
+              </button>
+            </>
+          )}
 
           {/* Trigger Scan Button */}
           <button
+            type="button"
             onClick={runScanCycle}
             disabled={isScanning}
-            className="px-3.5 py-1.5 rounded-lg bg-[#00b4d8] hover:bg-[#0096b4] text-[#0f233a] text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer disabled:opacity-50"
+            className="px-3.5 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer disabled:opacity-50"
             title="Jalankan siklus baca antena RFID sekarang"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin' : ''}`} />
-            <span>{isScanning ? 'Memindai...' : 'Trigger Siklus Baca'}</span>
+            <RefreshCw className={`w-3.5 h-3.5 text-[#008ba3] ${isScanning ? 'animate-spin' : ''}`} />
+            <span>{isScanning ? 'Memindai Antena...' : 'Pindai RFID Brankas'}</span>
           </button>
 
           {/* Badge Reader Status */}
-          <span className="inline-flex items-center px-3 py-1.5 rounded bg-[#dcfce7] text-[#15803d] text-xs font-semibold font-mono tracking-wide border border-emerald-200">
+          <span className="inline-flex items-center px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 text-xs font-semibold font-mono tracking-wide border border-emerald-200">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>
             READER ONLINE
           </span>
         </div>
@@ -101,7 +118,7 @@ export default function DrawerMonitorView() {
 
       {/* DYNAMIC ALERT BANNER 1: SELISIH MERAH */}
       {hasSelisih && (
-        <div className="bg-[#fef2f2] border border-[#fca5a5] rounded-lg p-4 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3 animate-in fade-in duration-200">
+        <div className="bg-[#fef2f2] border border-[#fca5a5] rounded-xl p-4 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3 animate-in fade-in duration-200">
           <div className="flex items-start gap-3">
             <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
             <div>
@@ -142,7 +159,7 @@ export default function DrawerMonitorView() {
 
       {/* DYNAMIC ALERT BANNER 2: MISPLACED ORANGE */}
       {!hasSelisih && hasMisplaced && (
-        <div className="bg-[#fffbeb] border border-[#fde68a] rounded-lg p-3.5 shadow-xs flex items-center justify-between gap-3 animate-in fade-in duration-200">
+        <div className="bg-[#fffbeb] border border-[#fde68a] rounded-xl p-3.5 shadow-xs flex items-center justify-between gap-3 animate-in fade-in duration-200">
           <div className="flex items-center gap-2.5 text-xs">
             <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
             <span className="font-semibold text-amber-900">
@@ -160,7 +177,7 @@ export default function DrawerMonitorView() {
 
       {/* DYNAMIC BANNER 3: MUTASI DOKUMEN SAH TERVERIFIKASI */}
       {recentVerifiedTransfer && (
-        <div className="bg-[#f0f9ff] border border-[#bae6fd] rounded-lg p-3.5 shadow-xs flex items-center justify-between gap-3">
+        <div className="bg-[#f0f9ff] border border-[#bae6fd] rounded-xl p-3.5 shadow-xs flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 text-xs">
             <CheckCircle2 className="w-4 h-4 text-[#0284c7] shrink-0" />
             <span className="font-semibold text-[#0369a1]">

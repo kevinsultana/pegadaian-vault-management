@@ -15,6 +15,9 @@ import {
   User,
   ShieldCheck,
   Eye,
+  Sparkles,
+  ClipboardList,
+  Radio,
 } from 'lucide-react';
 
 export default function TransactionView() {
@@ -74,7 +77,7 @@ export default function TransactionView() {
               <button
                 type="button"
                 onClick={() => setInboundModalOpen(true)}
-                className="px-3.5 py-2 rounded-lg bg-[#008ba3] hover:bg-[#00758a] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+                className="px-3.5 py-2 rounded-xl bg-[#008ba3] hover:bg-[#00758a] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
               >
                 <PlusCircle className="w-4 h-4" />
                 <span>+ Inbound (Gadai Baru)</span>
@@ -82,13 +85,65 @@ export default function TransactionView() {
               <button
                 type="button"
                 onClick={() => setOutboundModalOpen(true)}
-                className="px-3.5 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+                className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
               >
                 <ArrowUpRight className="w-4 h-4" />
                 <span>Outbound (Tebus)</span>
               </button>
             </>
           )}
+        </div>
+      </div>
+
+      {/* Visual Workflow Pipeline Stepper Bar */}
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+        <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-3">
+          Alur Bisnis Operasional Pegadaian Smart Vault:
+        </span>
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+          {/* Step 1 */}
+          <div className="p-3 rounded-lg bg-sky-50/70 border border-sky-200 space-y-1">
+            <div className="flex items-center gap-2 text-[#008ba3] font-bold">
+              <span className="w-5 h-5 rounded-full bg-[#008ba3] text-white flex items-center justify-center text-[10px] font-mono">1</span>
+              <span>Input Transaksi</span>
+            </div>
+            <p className="text-[10px] text-slate-600 leading-tight">
+              <strong>Staff Bisnis</strong> mendaftarkan keping emas & alokasi slot laci kosong.
+            </p>
+          </div>
+
+          {/* Step 2 */}
+          <div className="p-3 rounded-lg bg-amber-50/70 border border-amber-200 space-y-1">
+            <div className="flex items-center gap-2 text-amber-800 font-bold">
+              <span className="w-5 h-5 rounded-full bg-amber-500 text-slate-900 flex items-center justify-center text-[10px] font-mono">2</span>
+              <span>Approval Otorisasi</span>
+            </div>
+            <p className="text-[10px] text-slate-600 leading-tight">
+              <strong>Supervisor</strong> verifikasi data & setujui penerbitan SPK Perintah Kerja.
+            </p>
+          </div>
+
+          {/* Step 3 */}
+          <div className="p-3 rounded-lg bg-indigo-50/70 border border-indigo-200 space-y-1">
+            <div className="flex items-center gap-2 text-indigo-800 font-bold">
+              <span className="w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px] font-mono">3</span>
+              <span>Eksekusi Fisik</span>
+            </div>
+            <p className="text-[10px] text-slate-600 leading-tight">
+              <strong>Petugas Vault</strong> meletakkan/mengambil fisik emas di slot laci sesuai SPK.
+            </p>
+          </div>
+
+          {/* Step 4 */}
+          <div className="p-3 rounded-lg bg-emerald-50/70 border border-emerald-200 space-y-1">
+            <div className="flex items-center gap-2 text-emerald-800 font-bold">
+              <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-mono">4</span>
+              <span>Verifikasi RFID</span>
+            </div>
+            <p className="text-[10px] text-slate-600 leading-tight">
+              Antena RFID otomatis mencocokkan tag. Status <strong>COMPLETED</strong> & slot terbarui.
+            </p>
+          </div>
         </div>
       </div>
 

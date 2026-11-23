@@ -14,6 +14,8 @@ import {
   User,
   Radio,
   FileCheck2,
+  Sparkles,
+  Layers,
 } from 'lucide-react';
 
 export default function WorkOrderView() {
@@ -21,7 +23,6 @@ export default function WorkOrderView() {
 
   const [filterType, setFilterType] = useState('ALL'); // ALL | INBOUND | OUTBOUND | MUTASI
   const isPetugas = currentRole === 'PETUGAS';
-  const isSPI = currentRole === 'SPI';
 
   // Work orders that are either APPROVED (ready to execute) or COMPLETED
   const workOrders = transactions.filter(
@@ -62,7 +63,7 @@ export default function WorkOrderView() {
           <div className="flex items-center gap-2.5">
             <Lock className="w-4 h-4 text-sky-700 shrink-0" />
             <span>
-              Peran aktif Anda: <strong>{currentRole}</strong>. Tombol konfirmasi eksekusi fisik hanya aktif untuk <strong>Petugas Vault</strong>.
+              Peran Anda saat ini: <strong>{currentRole}</strong>. Tombol konfirmasi eksekusi fisik hanya aktif untuk <strong>Petugas Vault</strong>.
             </span>
           </div>
           <span className="text-[11px] font-bold text-sky-800 bg-sky-200/60 px-2 py-0.5 rounded border border-sky-300 shrink-0">
@@ -70,6 +71,44 @@ export default function WorkOrderView() {
           </span>
         </div>
       )}
+
+      {/* Petugas SOP Physical Execution Guide Banner */}
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+        <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-2.5">
+          Prosedur Standar Operasional (SOP) Eksekusi Fisik Petugas Vault:
+        </span>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+          <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
+            <span className="font-bold text-slate-800 flex items-center gap-1.5">
+              <span className="w-4 h-4 rounded-full bg-[#008ba3] text-white flex items-center justify-center text-[10px]">1</span>
+              Verifikasi Dokumen & Fisik
+            </span>
+            <p className="text-[11px] text-slate-500">
+              Cocokkan Tag ID fisik emas, gramatur, dan nomor SBG dengan data pada SPK di bawah.
+            </p>
+          </div>
+
+          <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
+            <span className="font-bold text-slate-800 flex items-center gap-1.5">
+              <span className="w-4 h-4 rounded-full bg-[#008ba3] text-white flex items-center justify-center text-[10px]">2</span>
+              Aksi Fisik di Lemari LT-01
+            </span>
+            <p className="text-[11px] text-slate-500">
+              Buka kompartemen laci dan letakkan/ambil keping emas tepat di <strong>Nomor Slot</strong> yang diinstruksikan.
+            </p>
+          </div>
+
+          <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
+            <span className="font-bold text-slate-800 flex items-center gap-1.5">
+              <span className="w-4 h-4 rounded-full bg-[#008ba3] text-white flex items-center justify-center text-[10px]">3</span>
+              Konfirmasi Sistem & Validasi RFID
+            </span>
+            <p className="text-[11px] text-slate-500">
+              Klik tombol aksi eksekusi. Reader RFID otomatis memverifikasi kecocokan lokasi dan memperbarui slot.
+            </p>
+          </div>
+        </div>
+      </div>
 
       {/* Main Table Card */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-5 space-y-4">
